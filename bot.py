@@ -701,7 +701,8 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     if not TOKEN:
-        raise ValueError("BOT_TOKEN غير موجود في ملف .env")
+        print("❌ BOT_TOKEN not found. Make sure it is set in Railway Variables.")
+        exit()
 
     if not CHANNEL_ID:
         raise ValueError("CHANNEL_ID غير موجود في ملف .env")
