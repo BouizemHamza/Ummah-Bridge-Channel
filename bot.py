@@ -144,7 +144,6 @@ def init_db():
     )
     """)
 
-    # migrations
     c.execute("PRAGMA table_info(users)")
     user_cols = [row[1] for row in c.fetchall()]
     if "adhkar_lang" not in user_cols:
@@ -633,26 +632,6 @@ def adhkar_reminder_menu(user_id):
     ])
 
 
-def adhkar_navigation(kind, index, total):
-    buttons = []
-    row = []
-
-    if index > 0:
-        row.append(InlineKeyboardButton("⬅️ السابق", callback_data=f"adhkar_{kind}_{index - 1}"))
-
-    if index < total - 1:
-        row.append(InlineKeyboardButton("التالي ➡️", callback_data=f"adhkar_{kind}_{index + 1}"))
-
-    if row:
-        buttons.append(row)
-
-    buttons.append([InlineKeyboardButton("✅ أنهيت الأذكار", callback_data=f"adhkar_done_{kind}")])
-    buttons.append([InlineKeyboardButton("⬅️ رجوع للأذكار", callback_data="adhkar_menu")])
-    buttons.append([InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")])
-
-    return InlineKeyboardMarkup(buttons)
-
-
 def admin_menu():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("🕊️ نشر حديث الآن", callback_data="admin_post_hadith")],
@@ -678,7 +657,7 @@ def admin_back():
 
 
 # =====================================================
-# Adhkar Render
+# Adhkar Render + Repeat Counter
 # =====================================================
 
 def get_localized_value(item, field, lang):
@@ -717,6 +696,48 @@ def get_meaning(item, lang):
     return ADHKAR_LANGUAGES.get(lang, ADHKAR_LANGUAGES["en"])["missing"]
 
 
+def get_repeat_total(item):
+    repeat_ar = item.get("repeat", {}).get("ar", "")
+
+    repeat_map = {
+        "مرة واحدة": 1,
+        "ثلاث مرات": 3,
+        "أربع مرات": 4,
+        "سبع مرات": 7,
+        "عشر مرات": 10,
+        "مائة مرة": 100,
+        "عشر مرات أو مائة مرة": 10,
+    }
+
+    return repeat_map.get(repeat_ar, 1)
+
+
+def adhkar_navigation(kind, index, total, repeat_total=1):
+    buttons = []
+
+    if repeat_total > 1:
+        buttons.append([
+            InlineKeyboardButton("🔁 عداد التكرار", callback_data=f"adhkar_counter_{kind}_{index}_0")
+        ])
+
+    row = []
+
+    if index > 0:
+        row.append(InlineKeyboardButton("⬅️ السابق", callback_data=f"adhkar_{kind}_{index - 1}"))
+
+    if index < total - 1:
+        row.append(InlineKeyboardButton("التالي ➡️", callback_data=f"adhkar_{kind}_{index + 1}"))
+
+    if row:
+        buttons.append(row)
+
+    buttons.append([InlineKeyboardButton("✅ أنهيت الأذكار", callback_data=f"adhkar_done_{kind}")])
+    buttons.append([InlineKeyboardButton("⬅️ رجوع للأذكار", callback_data="adhkar_menu")])
+    buttons.append([InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")])
+
+    return InlineKeyboardMarkup(buttons)
+
+
 def render_adhkar(kind, index, lang):
     lang_pack = ADHKAR_LANGUAGES.get(lang, ADHKAR_LANGUAGES["ar"])
     adhkar_list = MORNING_ADHKAR if kind == "morning" else EVENING_ADHKAR
@@ -736,6 +757,7 @@ def render_adhkar(kind, index, lang):
     source_text = get_localized_value(item, "source", lang)
     meaning_text = get_meaning(item, lang)
     translation_note = lang_pack.get("translation_note", "")
+    repeat_total = get_repeat_total(item)
 
     if lang == "ar":
         text = f"""{title}
@@ -769,7 +791,119 @@ def render_adhkar(kind, index, lang):
         if translation_note:
             text += f"\n\nℹ️ <i>{esc(translation_note)}</i>"
 
-    return text, adhkar_navigation(kind, index, total)
+    return text, adhkar_navigation(kind, index, total, repeat_total)
+
+
+def render_adhkar_counter(kind, index, lang, count):
+    lang_pack = ADHKAR_LANGUAGES.get(lang, ADHKAR_LANGUAGES["ar"])
+    adhkar_list = MORNING_ADHKAR if kind == "morning" else EVENING_ADHKAR
+
+    total_adhkar = len(adhkar_list)
+
+    if index < 0:
+        index = 0
+
+    if index >= total_adhkar:
+        index = total_adhkar - 1
+
+    item = adhkar_list[index]
+    repeat_total = get_repeat_total(item)
+
+    if count < 0:
+        count = 0
+
+    if count > repeat_total:
+        count = repeat_total
+
+    title = lang_pack["morning_title"] if kind == "morning" else lang_pack["evening_title"]
+    repeat_text = get_localized_value(item, "repeat", lang)
+    source_text = get_localized_value(item, "source", lang)
+    meaning_text = get_meaning(item, lang)
+    translation_note = lang_pack.get("translation_note", "")
+
+    progress_bar = "🟩" * count + "⬜" * (repeat_total - count)
+    if repeat_total > 20:
+        filled = int((count / repeat_total) * 10)
+        progress_bar = "🟩" * filled + "⬜" * (10 - filled)
+
+    if lang == "ar":
+        text = f"""{title}
+
+<b>{esc(lang_pack["dhikr_word"])} {index + 1}/{total_adhkar}</b>
+{line()}
+{esc(item["ar"])}
+{line()}
+🔁 <b>{esc(lang_pack["label_repeat"])}:</b> {esc(repeat_text)}
+📚 <b>{esc(lang_pack["label_source"])}:</b> {esc(source_text)}
+
+🔢 <b>عداد التكرار:</b> {count}/{repeat_total}
+{progress_bar}
+"""
+    else:
+        text = f"""{title}
+
+<b>{esc(lang_pack["dhikr_word"])} {index + 1}/{total_adhkar}</b>
+{line()}
+<b>{esc(lang_pack["label_arabic_text"])}:</b>
+
+{esc(item["ar"])}
+
+{line()}
+<b>{esc(lang_pack["label_meaning"])}:</b>
+
+{esc(meaning_text)}
+
+{line()}
+🔁 <b>{esc(lang_pack["label_repeat"])}:</b> {esc(repeat_text)}
+📚 <b>{esc(lang_pack["label_source"])}:</b> {esc(source_text)}
+
+🔢 <b>Counter:</b> {count}/{repeat_total}
+{progress_bar}
+"""
+
+        if translation_note:
+            text += f"\n\nℹ️ <i>{esc(translation_note)}</i>"
+
+    buttons = []
+
+    if count < repeat_total:
+        buttons.append([
+            InlineKeyboardButton("✅ تم التكرار مرة", callback_data=f"adhkar_counter_{kind}_{index}_{count + 1}")
+        ])
+
+        if repeat_total >= 10:
+            next_10 = min(count + 10, repeat_total)
+            buttons.append([
+                InlineKeyboardButton("➕ 10", callback_data=f"adhkar_counter_{kind}_{index}_{next_10}")
+            ])
+
+    else:
+        buttons.append([
+            InlineKeyboardButton("✅ اكتمل التكرار", callback_data=f"adhkar_{kind}_{index}")
+        ])
+
+        if index < total_adhkar - 1:
+            buttons.append([
+                InlineKeyboardButton("التالي ➡️", callback_data=f"adhkar_{kind}_{index + 1}")
+            ])
+        else:
+            buttons.append([
+                InlineKeyboardButton("✅ أنهيت الأذكار", callback_data=f"adhkar_done_{kind}")
+            ])
+
+    buttons.append([
+        InlineKeyboardButton("🔄 إعادة العداد", callback_data=f"adhkar_counter_{kind}_{index}_0")
+    ])
+
+    buttons.append([
+        InlineKeyboardButton("⬅️ رجوع للذكر", callback_data=f"adhkar_{kind}_{index}")
+    ])
+
+    buttons.append([
+        InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")
+    ])
+
+    return text, InlineKeyboardMarkup(buttons)
 
 
 # =====================================================
@@ -1077,6 +1211,23 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             adhkar_main_menu(user_id)
         )
 
+    elif data.startswith("adhkar_counter_"):
+        parts = data.split("_")
+        kind = parts[2]
+        index = int(parts[3])
+        count = int(parts[4])
+
+        lang = get_adhkar_lang(user_id)
+
+        text, markup = render_adhkar_counter(
+            kind=kind,
+            index=index,
+            lang=lang,
+            count=count
+        )
+
+        await safe_edit(q, text, markup)
+
     elif data.startswith("adhkar_morning_"):
         index = int(data.split("_")[-1])
         lang = get_adhkar_lang(user_id)
@@ -1183,7 +1334,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🚫 لا نقدّم آراء شخصية.
 ✅ ننشر نصوصًا موثقة ومترجمة.
 
-🤲 يحتوي البوت على أذكار الصباح والمساء بلغات متعددة.
+🤲 يحتوي البوت على أذكار الصباح والمساء بلغات متعددة مع عداد تكرار.
 
 🌍 القناة:
 {esc(CHANNEL_ID)}
@@ -1291,6 +1442,8 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🌍 <b>لغات الأذكار:</b>
 العربية، الإنجليزية، الألمانية، الفرنسية، الإسبانية، التركية، الإندونيسية، الأردية، الهندية.
 
+🔁 <b>ميزة عداد التكرار:</b> مفعلة
+
 ⏰ <b>أوقات الأذكار:</b>
 • صباح: <code>{esc(MORNING_ADHKAR_TIME)}</code>
 • مساء: <code>{esc(EVENING_ADHKAR_TIME)}</code>
@@ -1392,7 +1545,7 @@ def main():
         time=parse_schedule_time(EVENING_ADHKAR_TIME, "18:00")
     )
 
-    print("Bot running with external adhkar_data.py...")
+    print("Bot running with adhkar repeat counter...")
     print(f"Hadith post time: {HADITH_POST_TIME}")
     print(f"Quran post time: {QURAN_POST_TIME}")
     print(f"Mixed post time: {MIXED_POST_TIME}")
