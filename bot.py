@@ -5,7 +5,6 @@ import sqlite3
 import requests
 import datetime
 
-from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder,
@@ -17,10 +16,8 @@ from telegram.ext import (
 )
 from telegram.error import BadRequest
 
-load_dotenv()
-
-TOKEN = os.getenv("BOT_TOKEN")
-CHANNEL_ID = os.getenv("CHANNEL_ID")
+TOKEN = os.environ.get("BOT_TOKEN")
+CHANNEL_ID = os.environ.get("CHANNEL_ID", "@UMMAHBRIDGE")
 
 QURAN_API = "https://api.alquran.cloud/v1"
 HADEETH_ENC_LIST_API = "https://hadeethenc.com/api/v1/hadeeths/list/"
@@ -700,12 +697,12 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def main():
+    print("BOT_TOKEN exists:", bool(TOKEN))
+    print("CHANNEL_ID exists:", bool(CHANNEL_ID))
+
     if not TOKEN:
         print("❌ BOT_TOKEN not found. Make sure it is set in Railway Variables.")
-        exit()
-
-    if not CHANNEL_ID:
-        raise ValueError("CHANNEL_ID غير موجود في ملف .env")
+        return
 
     init_db()
 
