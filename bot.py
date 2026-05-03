@@ -36,216 +36,297 @@ LIST_API = "https://hadeethenc.com/api/v1/hadeeths/list/"
 DB = "bot.db"
 
 
-# ================== الأذكار ==================
+# ================== ADHKAR DATA ==================
 
 MORNING_ADHKAR = [
     {
-        "text": "أَصْـبَحْنا وَأَصْـبَحَ المُـلْكُ لله، والحَمْدُ لله، لا إلهَ إلاّ اللهُ وحدَهُ لا شريكَ له، لهُ المُـلْكُ ولهُ الحَمْـد، وهوَ على كلّ شيءٍ قدير.",
-        "repeat": "مرة واحدة",
-        "source": "من أذكار الصباح"
+        "ar": "أَصْـبَحْنا وَأَصْـبَحَ المُـلْكُ لله، والحَمْدُ لله، لا إلهَ إلاّ اللهُ وحدَهُ لا شريكَ له، لهُ المُـلْكُ ولهُ الحَمْـد، وهوَ على كلّ شيءٍ قدير.",
+        "en": "We have entered the morning, and all dominion belongs to Allah. Praise belongs to Allah. There is no deity worthy of worship except Allah alone, with no partner. His is the dominion and His is the praise, and He has power over all things.",
+        "de": "Wir sind in den Morgen eingetreten, und die Herrschaft gehört Allah. Alles Lob gehört Allah. Es gibt keinen anbetungswürdigen Gott außer Allah allein, ohne Partner. Ihm gehört die Herrschaft und Ihm gehört das Lob, und Er hat Macht über alle Dinge.",
+        "repeat_ar": "مرة واحدة",
+        "repeat_en": "Once",
+        "repeat_de": "Einmal",
+        "source_ar": "من أذكار الصباح",
+        "source_en": "Morning adhkar",
+        "source_de": "Morgen-Adhkar",
     },
     {
-        "text": "اللّهـمَّ بِكَ أَصْـبَحْنا، وَبِكَ أَمْسَيْـنا، وَبِكَ نَحْـيا، وَبِكَ نَمـوتُ، وَإِلَيْكَ النُّـشور.",
-        "repeat": "مرة واحدة",
-        "source": "من أذكار الصباح"
+        "ar": "اللّهـمَّ بِكَ أَصْـبَحْنا، وَبِكَ أَمْسَيْـنا، وَبِكَ نَحْـيا، وَبِكَ نَمـوتُ، وَإِلَيْكَ النُّـشور.",
+        "en": "O Allah, by You we enter the morning, by You we enter the evening, by You we live, by You we die, and to You is the resurrection.",
+        "de": "O Allah, durch Dich treten wir in den Morgen ein, durch Dich treten wir in den Abend ein, durch Dich leben wir, durch Dich sterben wir, und zu Dir ist die Auferstehung.",
+        "repeat_ar": "مرة واحدة",
+        "repeat_en": "Once",
+        "repeat_de": "Einmal",
+        "source_ar": "من أذكار الصباح",
+        "source_en": "Morning adhkar",
+        "source_de": "Morgen-Adhkar",
     },
     {
-        "text": "اللّهـمَّ أَنْتَ رَبِّـي لا إلهَ إلاّ أَنْتَ، خَلَقْتَنـي وأنا عَبْـدُك، وأنا على عَهْـدِكَ ووَعْـدِكَ ما استطعتُ، أعوذُ بكَ مِنْ شَرِّ ما صَنَعْت، أبوءُ لكَ بنِعْمَتِكَ عليَّ، وأبوءُ بذَنْـبي، فاغْفِـرْ لي، فإنّهُ لا يَغْفِـرُ الذُّنوبَ إلاّ أنت.",
-        "repeat": "مرة واحدة",
-        "source": "سيد الاستغفار"
+        "ar": "اللّهـمَّ أَنْتَ رَبِّـي لا إلهَ إلاّ أَنْتَ، خَلَقْتَنـي وأنا عَبْـدُك، وأنا على عَهْـدِكَ ووَعْـدِكَ ما استطعتُ، أعوذُ بكَ مِنْ شَرِّ ما صَنَعْت، أبوءُ لكَ بنِعْمَتِكَ عليَّ، وأبوءُ بذَنْـبي، فاغْفِـرْ لي، فإنّهُ لا يَغْفِـرُ الذُّنوبَ إلاّ أنت.",
+        "en": "O Allah, You are my Lord. There is no deity worthy of worship except You. You created me and I am Your servant. I remain upon Your covenant and promise as much as I am able. I seek refuge in You from the evil of what I have done. I acknowledge Your favor upon me and I acknowledge my sin, so forgive me, for none forgives sins except You.",
+        "de": "O Allah, Du bist mein Herr. Es gibt keinen anbetungswürdigen Gott außer Dir. Du hast mich erschaffen und ich bin Dein Diener. Ich halte mich, soweit ich kann, an Deinen Bund und Dein Versprechen. Ich suche Zuflucht bei Dir vor dem Übel dessen, was ich getan habe. Ich erkenne Deine Gnade an mir an und erkenne meine Sünde an, so vergib mir, denn niemand vergibt Sünden außer Dir.",
+        "repeat_ar": "مرة واحدة",
+        "repeat_en": "Once",
+        "repeat_de": "Einmal",
+        "source_ar": "سيد الاستغفار",
+        "source_en": "The master supplication for forgiveness",
+        "source_de": "Das umfassende Bittgebet um Vergebung",
     },
     {
-        "text": "رَضيتُ باللهِ ربًّا، وبالإسلامِ دينًا، وبمحمّدٍ ﷺ نبيًّا.",
-        "repeat": "ثلاث مرات",
-        "source": "من أذكار الصباح والمساء"
+        "ar": "رَضيتُ باللهِ ربًّا، وبالإسلامِ دينًا، وبمحمّدٍ ﷺ نبيًّا.",
+        "en": "I am pleased with Allah as my Lord, Islam as my religion, and Muhammad ﷺ as my Prophet.",
+        "de": "Ich bin zufrieden mit Allah als meinem Herrn, mit dem Islam als meiner Religion und mit Muhammad ﷺ als meinem Propheten.",
+        "repeat_ar": "ثلاث مرات",
+        "repeat_en": "Three times",
+        "repeat_de": "Dreimal",
+        "source_ar": "من أذكار الصباح والمساء",
+        "source_en": "Morning and evening adhkar",
+        "source_de": "Morgen- und Abend-Adhkar",
     },
     {
-        "text": "اللّهـمَّ إنّي أَصْبَحْتُ أُشْهِدُكَ، وأُشْهِدُ حَمَلَةَ عَرْشِكَ، ومَلائِكَتَكَ، وجميعَ خَلْقِكَ، أنّكَ أنتَ اللهُ لا إلهَ إلاّ أنتَ وحدَكَ لا شريكَ لك، وأنّ محمّدًا عبدُكَ ورسولُك.",
-        "repeat": "أربع مرات",
-        "source": "من أذكار الصباح"
+        "ar": "اللّهـمَّ إنّي أَصْبَحْتُ أُشْهِدُكَ، وأُشْهِدُ حَمَلَةَ عَرْشِكَ، ومَلائِكَتَكَ، وجميعَ خَلْقِكَ، أنّكَ أنتَ اللهُ لا إلهَ إلاّ أنتَ وحدَكَ لا شريكَ لك، وأنّ محمّدًا عبدُكَ ورسولُك.",
+        "en": "O Allah, I have entered the morning calling You to witness, and calling the bearers of Your Throne, Your angels, and all Your creation to witness, that You are Allah; there is no deity worthy of worship except You alone with no partner, and that Muhammad is Your servant and Messenger.",
+        "de": "O Allah, ich bin in den Morgen eingetreten und rufe Dich, die Träger Deines Thrones, Deine Engel und Deine gesamte Schöpfung als Zeugen an, dass Du Allah bist; es gibt keinen anbetungswürdigen Gott außer Dir allein, ohne Partner, und dass Muhammad Dein Diener und Gesandter ist.",
+        "repeat_ar": "أربع مرات",
+        "repeat_en": "Four times",
+        "repeat_de": "Viermal",
+        "source_ar": "من أذكار الصباح",
+        "source_en": "Morning adhkar",
+        "source_de": "Morgen-Adhkar",
     },
     {
-        "text": "اللّهـمَّ ما أَصْبَحَ بي مِنْ نِعْمَةٍ أو بأَحَدٍ مِنْ خَلْقِكَ، فَمِنْكَ وحدَكَ لا شريكَ لك، فَلَكَ الحمدُ ولكَ الشُّكر.",
-        "repeat": "مرة واحدة",
-        "source": "من أذكار الصباح"
+        "ar": "اللّهـمَّ ما أَصْبَحَ بي مِنْ نِعْمَةٍ أو بأَحَدٍ مِنْ خَلْقِكَ، فَمِنْكَ وحدَكَ لا شريكَ لك، فَلَكَ الحمدُ ولكَ الشُّكر.",
+        "en": "O Allah, whatever blessing has come to me or to any of Your creation this morning is from You alone, with no partner. To You belongs all praise and all thanks.",
+        "de": "O Allah, jede Gnade, die mich oder eines Deiner Geschöpfe an diesem Morgen erreicht hat, ist von Dir allein, ohne Partner. Dir gebührt alles Lob und aller Dank.",
+        "repeat_ar": "مرة واحدة",
+        "repeat_en": "Once",
+        "repeat_de": "Einmal",
+        "source_ar": "من أذكار الصباح",
+        "source_en": "Morning adhkar",
+        "source_de": "Morgen-Adhkar",
     },
     {
-        "text": "حَسْبِيَ اللهُ لا إلهَ إلاّ هو، عليهِ توكّلتُ، وهوَ ربُّ العرشِ العظيم.",
-        "repeat": "سبع مرات",
-        "source": "من أذكار الصباح والمساء"
+        "ar": "حَسْبِيَ اللهُ لا إلهَ إلاّ هو، عليهِ توكّلتُ، وهوَ ربُّ العرشِ العظيم.",
+        "en": "Allah is sufficient for me. There is no deity worthy of worship except Him. Upon Him I rely, and He is the Lord of the Mighty Throne.",
+        "de": "Allah genügt mir. Es gibt keinen anbetungswürdigen Gott außer Ihm. Auf Ihn vertraue ich, und Er ist der Herr des gewaltigen Thrones.",
+        "repeat_ar": "سبع مرات",
+        "repeat_en": "Seven times",
+        "repeat_de": "Siebenmal",
+        "source_ar": "من أذكار الصباح والمساء",
+        "source_en": "Morning and evening adhkar",
+        "source_de": "Morgen- und Abend-Adhkar",
     },
     {
-        "text": "بِسْمِ اللهِ الذي لا يَضُرُّ مع اسمِهِ شيءٌ في الأرضِ ولا في السماءِ، وهوَ السميعُ العليم.",
-        "repeat": "ثلاث مرات",
-        "source": "من أذكار الصباح والمساء"
+        "ar": "بِسْمِ اللهِ الذي لا يَضُرُّ مع اسمِهِ شيءٌ في الأرضِ ولا في السماءِ، وهوَ السميعُ العليم.",
+        "en": "In the name of Allah, with whose name nothing on earth or in the heavens can cause harm, and He is the All-Hearing, the All-Knowing.",
+        "de": "Im Namen Allahs, mit dessen Namen nichts auf der Erde und nichts im Himmel Schaden zufügen kann. Er ist der Allhörende, der Allwissende.",
+        "repeat_ar": "ثلاث مرات",
+        "repeat_en": "Three times",
+        "repeat_de": "Dreimal",
+        "source_ar": "من أذكار الصباح والمساء",
+        "source_en": "Morning and evening adhkar",
+        "source_de": "Morgen- und Abend-Adhkar",
     },
     {
-        "text": "اللّهـمَّ عافِني في بَدَني، اللّهـمَّ عافِني في سَمْعي، اللّهـمَّ عافِني في بَصَري، لا إلهَ إلاّ أنت.",
-        "repeat": "ثلاث مرات",
-        "source": "من أذكار الصباح والمساء"
+        "ar": "اللّهـمَّ عافِني في بَدَني، اللّهـمَّ عافِني في سَمْعي، اللّهـمَّ عافِني في بَصَري، لا إلهَ إلاّ أنت.",
+        "en": "O Allah, grant me well-being in my body. O Allah, grant me well-being in my hearing. O Allah, grant me well-being in my sight. There is no deity worthy of worship except You.",
+        "de": "O Allah, schenke mir Wohlergehen in meinem Körper. O Allah, schenke mir Wohlergehen in meinem Gehör. O Allah, schenke mir Wohlergehen in meinem Sehvermögen. Es gibt keinen anbetungswürdigen Gott außer Dir.",
+        "repeat_ar": "ثلاث مرات",
+        "repeat_en": "Three times",
+        "repeat_de": "Dreimal",
+        "source_ar": "من أذكار الصباح والمساء",
+        "source_en": "Morning and evening adhkar",
+        "source_de": "Morgen- und Abend-Adhkar",
     },
     {
-        "text": "اللّهـمَّ إنّي أعوذُ بكَ مِنَ الكُفْرِ والفَقْر، وأعوذُ بكَ مِنْ عذابِ القَبْر، لا إلهَ إلاّ أنت.",
-        "repeat": "ثلاث مرات",
-        "source": "من أذكار الصباح والمساء"
+        "ar": "اللّهـمَّ إنّي أعوذُ بكَ مِنَ الكُفْرِ والفَقْر، وأعوذُ بكَ مِنْ عذابِ القَبْر، لا إلهَ إلاّ أنت.",
+        "en": "O Allah, I seek refuge in You from disbelief and poverty, and I seek refuge in You from the punishment of the grave. There is no deity worthy of worship except You.",
+        "de": "O Allah, ich suche Zuflucht bei Dir vor Unglauben und Armut, und ich suche Zuflucht bei Dir vor der Strafe des Grabes. Es gibt keinen anbetungswürdigen Gott außer Dir.",
+        "repeat_ar": "ثلاث مرات",
+        "repeat_en": "Three times",
+        "repeat_de": "Dreimal",
+        "source_ar": "من أذكار الصباح والمساء",
+        "source_en": "Morning and evening adhkar",
+        "source_de": "Morgen- und Abend-Adhkar",
     },
     {
-        "text": "اللّهـمَّ إنّي أسألُكَ العفوَ والعافيةَ في الدنيا والآخرة.",
-        "repeat": "مرة واحدة",
-        "source": "من أذكار الصباح والمساء"
+        "ar": "اللّهـمَّ إنّي أسألُكَ العفوَ والعافيةَ في الدنيا والآخرة.",
+        "en": "O Allah, I ask You for pardon and well-being in this world and the Hereafter.",
+        "de": "O Allah, ich bitte Dich um Vergebung und Wohlergehen im Diesseits und im Jenseits.",
+        "repeat_ar": "مرة واحدة",
+        "repeat_en": "Once",
+        "repeat_de": "Einmal",
+        "source_ar": "من أذكار الصباح والمساء",
+        "source_en": "Morning and evening adhkar",
+        "source_de": "Morgen- und Abend-Adhkar",
     },
     {
-        "text": "اللّهـمَّ إنّي أسألُكَ العفوَ والعافيةَ في ديني ودنيايَ وأهلي ومالي.",
-        "repeat": "مرة واحدة",
-        "source": "من أذكار الصباح والمساء"
+        "ar": "اللّهـمَّ إنّي أسألُكَ العفوَ والعافيةَ في ديني ودنيايَ وأهلي ومالي.",
+        "en": "O Allah, I ask You for pardon and well-being in my religion, my worldly life, my family, and my wealth.",
+        "de": "O Allah, ich bitte Dich um Vergebung und Wohlergehen in meiner Religion, meinem weltlichen Leben, meiner Familie und meinem Besitz.",
+        "repeat_ar": "مرة واحدة",
+        "repeat_en": "Once",
+        "repeat_de": "Einmal",
+        "source_ar": "من أذكار الصباح والمساء",
+        "source_en": "Morning and evening adhkar",
+        "source_de": "Morgen- und Abend-Adhkar",
     },
     {
-        "text": "اللّهـمَّ استُرْ عوراتي، وآمِنْ رَوْعاتي.",
-        "repeat": "مرة واحدة",
-        "source": "من أذكار الصباح والمساء"
+        "ar": "اللّهـمَّ استُرْ عوراتي، وآمِنْ رَوْعاتي.",
+        "en": "O Allah, conceal my faults and calm my fears.",
+        "de": "O Allah, bedecke meine Fehler und beruhige meine Ängste.",
+        "repeat_ar": "مرة واحدة",
+        "repeat_en": "Once",
+        "repeat_de": "Einmal",
+        "source_ar": "من أذكار الصباح والمساء",
+        "source_en": "Morning and evening adhkar",
+        "source_de": "Morgen- und Abend-Adhkar",
     },
     {
-        "text": "اللّهـمَّ احفظني مِنْ بينِ يديَّ، ومِنْ خَلْفي، وعن يميني، وعن شمالي، ومِنْ فوقي، وأعوذُ بعظمتِكَ أن أُغتالَ مِنْ تحتي.",
-        "repeat": "مرة واحدة",
-        "source": "من أذكار الصباح والمساء"
+        "ar": "اللّهـمَّ احفظني مِنْ بينِ يديَّ، ومِنْ خَلْفي، وعن يميني، وعن شمالي، ومِنْ فوقي، وأعوذُ بعظمتِكَ أن أُغتالَ مِنْ تحتي.",
+        "en": "O Allah, protect me from in front of me, from behind me, from my right, from my left, and from above me. I seek refuge in Your greatness from being taken unaware from beneath me.",
+        "de": "O Allah, beschütze mich von vorne, von hinten, von rechts, von links und von oben. Ich suche Zuflucht bei Deiner Größe davor, von unten unerwartet getroffen zu werden.",
+        "repeat_ar": "مرة واحدة",
+        "repeat_en": "Once",
+        "repeat_de": "Einmal",
+        "source_ar": "من أذكار الصباح والمساء",
+        "source_en": "Morning and evening adhkar",
+        "source_de": "Morgen- und Abend-Adhkar",
     },
     {
-        "text": "يا حيُّ يا قيّومُ، برحمتِكَ أستغيث، أصلِحْ لي شأني كلَّه، ولا تَكِلْني إلى نفسي طَرْفَةَ عين.",
-        "repeat": "مرة واحدة",
-        "source": "من أذكار الصباح والمساء"
+        "ar": "يا حيُّ يا قيّومُ، برحمتِكَ أستغيث، أصلِحْ لي شأني كلَّه، ولا تَكِلْني إلى نفسي طَرْفَةَ عين.",
+        "en": "O Ever-Living, O Sustainer, by Your mercy I seek help. Rectify all of my affairs and do not leave me to myself even for the blink of an eye.",
+        "de": "O Ewig-Lebendiger, O Erhalter, durch Deine Barmherzigkeit suche ich Hilfe. Verbessere all meine Angelegenheiten und überlasse mich mir selbst nicht einmal für einen Augenblick.",
+        "repeat_ar": "مرة واحدة",
+        "repeat_en": "Once",
+        "repeat_de": "Einmal",
+        "source_ar": "من أذكار الصباح والمساء",
+        "source_en": "Morning and evening adhkar",
+        "source_de": "Morgen- und Abend-Adhkar",
     },
     {
-        "text": "أَصْبَحْنا على فِطْرَةِ الإسلام، وعلى كلمةِ الإخلاص، وعلى دينِ نبيّنا محمدٍ ﷺ، وعلى مِلّةِ أبينا إبراهيمَ حنيفًا مسلمًا وما كانَ مِنَ المشركين.",
-        "repeat": "مرة واحدة",
-        "source": "من أذكار الصباح"
+        "ar": "أَصْبَحْنا على فِطْرَةِ الإسلام، وعلى كلمةِ الإخلاص، وعلى دينِ نبيّنا محمدٍ ﷺ، وعلى مِلّةِ أبينا إبراهيمَ حنيفًا مسلمًا وما كانَ مِنَ المشركين.",
+        "en": "We have entered the morning upon the natural way of Islam, the word of sincerity, the religion of our Prophet Muhammad ﷺ, and the way of our father Ibrahim, who was upright and Muslim and was not among the polytheists.",
+        "de": "Wir sind in den Morgen eingetreten auf der natürlichen Veranlagung des Islam, auf dem Wort der Aufrichtigkeit, auf der Religion unseres Propheten Muhammad ﷺ und auf dem Weg unseres Vaters Ibrahim, der aufrichtig und Muslim war und nicht zu den Götzendienern gehörte.",
+        "repeat_ar": "مرة واحدة",
+        "repeat_en": "Once",
+        "repeat_de": "Einmal",
+        "source_ar": "من أذكار الصباح",
+        "source_en": "Morning adhkar",
+        "source_de": "Morgen-Adhkar",
     },
     {
-        "text": "سُبْحانَ اللهِ وبحمدِه.",
-        "repeat": "مائة مرة",
-        "source": "من أذكار الصباح والمساء"
+        "ar": "سُبْحانَ اللهِ وبحمدِه.",
+        "en": "Glory and praise be to Allah.",
+        "de": "Preis sei Allah und Lob sei Ihm.",
+        "repeat_ar": "مائة مرة",
+        "repeat_en": "One hundred times",
+        "repeat_de": "Hundertmal",
+        "source_ar": "من أذكار الصباح والمساء",
+        "source_en": "Morning and evening adhkar",
+        "source_de": "Morgen- und Abend-Adhkar",
     },
     {
-        "text": "لا إلهَ إلاّ اللهُ وحدَهُ لا شريكَ له، لهُ الملكُ ولهُ الحمدُ، وهوَ على كلّ شيءٍ قدير.",
-        "repeat": "عشر مرات أو مائة مرة",
-        "source": "من أذكار الصباح والمساء"
+        "ar": "لا إلهَ إلاّ اللهُ وحدَهُ لا شريكَ له، لهُ الملكُ ولهُ الحمدُ، وهوَ على كلّ شيءٍ قدير.",
+        "en": "There is no deity worthy of worship except Allah alone, with no partner. His is the dominion and His is the praise, and He has power over all things.",
+        "de": "Es gibt keinen anbetungswürdigen Gott außer Allah allein, ohne Partner. Ihm gehört die Herrschaft und Ihm gehört das Lob, und Er hat Macht über alle Dinge.",
+        "repeat_ar": "عشر مرات أو مائة مرة",
+        "repeat_en": "Ten or one hundred times",
+        "repeat_de": "Zehnmal oder hundertmal",
+        "source_ar": "من أذكار الصباح والمساء",
+        "source_en": "Morning and evening adhkar",
+        "source_de": "Morgen- und Abend-Adhkar",
     },
     {
-        "text": "أستغفرُ اللهَ وأتوبُ إليه.",
-        "repeat": "مائة مرة",
-        "source": "من الأذكار"
+        "ar": "أستغفرُ اللهَ وأتوبُ إليه.",
+        "en": "I seek Allah’s forgiveness and repent to Him.",
+        "de": "Ich bitte Allah um Vergebung und bereue vor Ihm.",
+        "repeat_ar": "مائة مرة",
+        "repeat_en": "One hundred times",
+        "repeat_de": "Hundertmal",
+        "source_ar": "من الأذكار",
+        "source_en": "General dhikr",
+        "source_de": "Allgemeiner Dhikr",
     },
     {
-        "text": "اللّهـمَّ صلِّ وسلّمْ على نبيّنا محمد.",
-        "repeat": "عشر مرات",
-        "source": "من الأذكار المشروعة"
+        "ar": "اللّهـمَّ صلِّ وسلّمْ على نبيّنا محمد.",
+        "en": "O Allah, send prayers and peace upon our Prophet Muhammad.",
+        "de": "O Allah, sende Segen und Frieden auf unseren Propheten Muhammad.",
+        "repeat_ar": "عشر مرات",
+        "repeat_en": "Ten times",
+        "repeat_de": "Zehnmal",
+        "source_ar": "من الأذكار المشروعة",
+        "source_en": "Legislated remembrance",
+        "source_de": "Überlieferter Dhikr",
     },
 ]
 
-EVENING_ADHKAR = [
-    {
-        "text": "أَمْسَيْنا وأَمْسَى المُـلْكُ لله، والحَمْدُ لله، لا إلهَ إلاّ اللهُ وحدَهُ لا شريكَ له، لهُ المُـلْكُ ولهُ الحَمْـد، وهوَ على كلّ شيءٍ قدير.",
-        "repeat": "مرة واحدة",
-        "source": "من أذكار المساء"
-    },
-    {
-        "text": "اللّهـمَّ بِكَ أَمْسَيْنا، وبِكَ أَصْبَحْنا، وبِكَ نَحْيا، وبِكَ نَموتُ، وإليكَ المصير.",
-        "repeat": "مرة واحدة",
-        "source": "من أذكار المساء"
-    },
-    {
-        "text": "اللّهـمَّ أَنْتَ رَبِّـي لا إلهَ إلاّ أَنْتَ، خَلَقْتَنـي وأنا عَبْـدُك، وأنا على عَهْـدِكَ ووَعْـدِكَ ما استطعتُ، أعوذُ بكَ مِنْ شَرِّ ما صَنَعْت، أبوءُ لكَ بنِعْمَتِكَ عليَّ، وأبوءُ بذَنْـبي، فاغْفِـرْ لي، فإنّهُ لا يَغْفِـرُ الذُّنوبَ إلاّ أنت.",
-        "repeat": "مرة واحدة",
-        "source": "سيد الاستغفار"
-    },
-    {
-        "text": "رَضيتُ باللهِ ربًّا، وبالإسلامِ دينًا، وبمحمّدٍ ﷺ نبيًّا.",
-        "repeat": "ثلاث مرات",
-        "source": "من أذكار الصباح والمساء"
-    },
-    {
-        "text": "اللّهـمَّ إنّي أَمْسَيْتُ أُشْهِدُكَ، وأُشْهِدُ حَمَلَةَ عَرْشِكَ، ومَلائِكَتَكَ، وجميعَ خَلْقِكَ، أنّكَ أنتَ اللهُ لا إلهَ إلاّ أنتَ وحدَكَ لا شريكَ لك، وأنّ محمّدًا عبدُكَ ورسولُك.",
-        "repeat": "أربع مرات",
-        "source": "من أذكار المساء"
-    },
-    {
-        "text": "اللّهـمَّ ما أَمْسَى بي مِنْ نِعْمَةٍ أو بأَحَدٍ مِنْ خَلْقِكَ، فَمِنْكَ وحدَكَ لا شريكَ لك، فَلَكَ الحمدُ ولكَ الشُّكر.",
-        "repeat": "مرة واحدة",
-        "source": "من أذكار المساء"
-    },
-    {
-        "text": "حَسْبِيَ اللهُ لا إلهَ إلاّ هو، عليهِ توكّلتُ، وهوَ ربُّ العرشِ العظيم.",
-        "repeat": "سبع مرات",
-        "source": "من أذكار الصباح والمساء"
-    },
-    {
-        "text": "بِسْمِ اللهِ الذي لا يَضُرُّ مع اسمِهِ شيءٌ في الأرضِ ولا في السماءِ، وهوَ السميعُ العليم.",
-        "repeat": "ثلاث مرات",
-        "source": "من أذكار الصباح والمساء"
-    },
-    {
-        "text": "اللّهـمَّ عافِني في بَدَني، اللّهـمَّ عافِني في سَمْعي، اللّهـمَّ عافِني في بَصَري، لا إلهَ إلاّ أنت.",
-        "repeat": "ثلاث مرات",
-        "source": "من أذكار الصباح والمساء"
-    },
-    {
-        "text": "اللّهـمَّ إنّي أعوذُ بكَ مِنَ الكُفْرِ والفَقْر، وأعوذُ بكَ مِنْ عذابِ القَبْر، لا إلهَ إلاّ أنت.",
-        "repeat": "ثلاث مرات",
-        "source": "من أذكار الصباح والمساء"
-    },
-    {
-        "text": "اللّهـمَّ إنّي أسألُكَ العفوَ والعافيةَ في الدنيا والآخرة.",
-        "repeat": "مرة واحدة",
-        "source": "من أذكار الصباح والمساء"
-    },
-    {
-        "text": "اللّهـمَّ إنّي أسألُكَ العفوَ والعافيةَ في ديني ودنيايَ وأهلي ومالي.",
-        "repeat": "مرة واحدة",
-        "source": "من أذكار الصباح والمساء"
-    },
-    {
-        "text": "اللّهـمَّ استُرْ عوراتي، وآمِنْ رَوْعاتي.",
-        "repeat": "مرة واحدة",
-        "source": "من أذكار الصباح والمساء"
-    },
-    {
-        "text": "اللّهـمَّ احفظني مِنْ بينِ يديَّ، ومِنْ خَلْفي، وعن يميني، وعن شمالي، ومِنْ فوقي، وأعوذُ بعظمتِكَ أن أُغتالَ مِنْ تحتي.",
-        "repeat": "مرة واحدة",
-        "source": "من أذكار الصباح والمساء"
-    },
-    {
-        "text": "يا حيُّ يا قيّومُ، برحمتِكَ أستغيث، أصلِحْ لي شأني كلَّه، ولا تَكِلْني إلى نفسي طَرْفَةَ عين.",
-        "repeat": "مرة واحدة",
-        "source": "من أذكار الصباح والمساء"
-    },
-    {
-        "text": "أَمْسَيْنا على فِطْرَةِ الإسلام، وعلى كلمةِ الإخلاص، وعلى دينِ نبيّنا محمدٍ ﷺ، وعلى مِلّةِ أبينا إبراهيمَ حنيفًا مسلمًا وما كانَ مِنَ المشركين.",
-        "repeat": "مرة واحدة",
-        "source": "من أذكار المساء"
-    },
-    {
-        "text": "سُبْحانَ اللهِ وبحمدِه.",
-        "repeat": "مائة مرة",
-        "source": "من أذكار الصباح والمساء"
-    },
-    {
-        "text": "لا إلهَ إلاّ اللهُ وحدَهُ لا شريكَ له، لهُ الملكُ ولهُ الحمدُ، وهوَ على كلّ شيءٍ قدير.",
-        "repeat": "عشر مرات أو مائة مرة",
-        "source": "من أذكار الصباح والمساء"
-    },
-    {
-        "text": "أستغفرُ اللهَ وأتوبُ إليه.",
-        "repeat": "مائة مرة",
-        "source": "من الأذكار"
-    },
-    {
-        "text": "اللّهـمَّ صلِّ وسلّمْ على نبيّنا محمد.",
-        "repeat": "عشر مرات",
-        "source": "من الأذكار المشروعة"
-    },
-]
+EVENING_ADHKAR = []
+for item in MORNING_ADHKAR:
+    EVENING_ADHKAR.append(item.copy())
+
+EVENING_ADHKAR[0] = {
+    "ar": "أَمْسَيْنا وأَمْسَى المُـلْكُ لله، والحَمْدُ لله، لا إلهَ إلاّ اللهُ وحدَهُ لا شريكَ له، لهُ المُـلْكُ ولهُ الحَمْـد، وهوَ على كلّ شيءٍ قدير.",
+    "en": "We have entered the evening, and all dominion belongs to Allah. Praise belongs to Allah. There is no deity worthy of worship except Allah alone, with no partner. His is the dominion and His is the praise, and He has power over all things.",
+    "de": "Wir sind in den Abend eingetreten, und die Herrschaft gehört Allah. Alles Lob gehört Allah. Es gibt keinen anbetungswürdigen Gott außer Allah allein, ohne Partner. Ihm gehört die Herrschaft und Ihm gehört das Lob, und Er hat Macht über alle Dinge.",
+    "repeat_ar": "مرة واحدة",
+    "repeat_en": "Once",
+    "repeat_de": "Einmal",
+    "source_ar": "من أذكار المساء",
+    "source_en": "Evening adhkar",
+    "source_de": "Abend-Adhkar",
+}
+
+EVENING_ADHKAR[1] = {
+    "ar": "اللّهـمَّ بِكَ أَمْسَيْنا، وبِكَ أَصْبَحْنا، وبِكَ نَحْيا، وبِكَ نَموتُ، وإليكَ المصير.",
+    "en": "O Allah, by You we enter the evening, by You we enter the morning, by You we live, by You we die, and to You is the return.",
+    "de": "O Allah, durch Dich treten wir in den Abend ein, durch Dich treten wir in den Morgen ein, durch Dich leben wir, durch Dich sterben wir, und zu Dir ist die Rückkehr.",
+    "repeat_ar": "مرة واحدة",
+    "repeat_en": "Once",
+    "repeat_de": "Einmal",
+    "source_ar": "من أذكار المساء",
+    "source_en": "Evening adhkar",
+    "source_de": "Abend-Adhkar",
+}
+
+EVENING_ADHKAR[4] = {
+    "ar": "اللّهـمَّ إنّي أَمْسَيْتُ أُشْهِدُكَ، وأُشْهِدُ حَمَلَةَ عَرْشِكَ، ومَلائِكَتَكَ، وجميعَ خَلْقِكَ، أنّكَ أنتَ اللهُ لا إلهَ إلاّ أنتَ وحدَكَ لا شريكَ لك، وأنّ محمّدًا عبدُكَ ورسولُك.",
+    "en": "O Allah, I have entered the evening calling You to witness, and calling the bearers of Your Throne, Your angels, and all Your creation to witness, that You are Allah; there is no deity worthy of worship except You alone with no partner, and that Muhammad is Your servant and Messenger.",
+    "de": "O Allah, ich bin in den Abend eingetreten und rufe Dich, die Träger Deines Thrones, Deine Engel und Deine gesamte Schöpfung als Zeugen an, dass Du Allah bist; es gibt keinen anbetungswürdigen Gott außer Dir allein, ohne Partner, und dass Muhammad Dein Diener und Gesandter ist.",
+    "repeat_ar": "أربع مرات",
+    "repeat_en": "Four times",
+    "repeat_de": "Viermal",
+    "source_ar": "من أذكار المساء",
+    "source_en": "Evening adhkar",
+    "source_de": "Abend-Adhkar",
+}
+
+EVENING_ADHKAR[5] = {
+    "ar": "اللّهـمَّ ما أَمْسَى بي مِنْ نِعْمَةٍ أو بأَحَدٍ مِنْ خَلْقِكَ، فَمِنْكَ وحدَكَ لا شريكَ لك، فَلَكَ الحمدُ ولكَ الشُّكر.",
+    "en": "O Allah, whatever blessing has come to me or to any of Your creation this evening is from You alone, with no partner. To You belongs all praise and all thanks.",
+    "de": "O Allah, jede Gnade, die mich oder eines Deiner Geschöpfe an diesem Abend erreicht hat, ist von Dir allein, ohne Partner. Dir gebührt alles Lob und aller Dank.",
+    "repeat_ar": "مرة واحدة",
+    "repeat_en": "Once",
+    "repeat_de": "Einmal",
+    "source_ar": "من أذكار المساء",
+    "source_en": "Evening adhkar",
+    "source_de": "Abend-Adhkar",
+}
+
+EVENING_ADHKAR[15] = {
+    "ar": "أَمْسَيْنا على فِطْرَةِ الإسلام، وعلى كلمةِ الإخلاص، وعلى دينِ نبيّنا محمدٍ ﷺ، وعلى مِلّةِ أبينا إبراهيمَ حنيفًا مسلمًا وما كانَ مِنَ المشركين.",
+    "en": "We have entered the evening upon the natural way of Islam, the word of sincerity, the religion of our Prophet Muhammad ﷺ, and the way of our father Ibrahim, who was upright and Muslim and was not among the polytheists.",
+    "de": "Wir sind in den Abend eingetreten auf der natürlichen Veranlagung des Islam, auf dem Wort der Aufrichtigkeit, auf der Religion unseres Propheten Muhammad ﷺ und auf dem Weg unseres Vaters Ibrahim, der aufrichtig und Muslim war und nicht zu den Götzendienern gehörte.",
+    "repeat_ar": "مرة واحدة",
+    "repeat_en": "Once",
+    "repeat_de": "Einmal",
+    "source_ar": "من أذكار المساء",
+    "source_en": "Evening adhkar",
+    "source_de": "Abend-Adhkar",
+}
 
 
-# ================== أدوات عامة ==================
+# ================== TOOLS ==================
 
 def esc(text):
     return html.escape(str(text or ""))
@@ -263,12 +344,6 @@ def is_admin(user_id):
     return user_id == ADMIN_ID
 
 
-def format_time_from_timestamp(ts):
-    if not ts:
-        return "غير متوفر"
-    return datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
-
-
 def parse_schedule_time(value, fallback="09:00"):
     try:
         value = str(value or fallback).strip()
@@ -276,28 +351,36 @@ def parse_schedule_time(value, fallback="09:00"):
         hour = int(hour_text)
         minute = int(minute_text)
 
-        if hour < 0 or hour > 23:
-            raise ValueError("Hour must be between 0 and 23")
-
-        if minute < 0 or minute > 59:
-            raise ValueError("Minute must be between 0 and 59")
+        if hour < 0 or hour > 23 or minute < 0 or minute > 59:
+            raise ValueError("Invalid time")
 
         return datetime.time(hour=hour, minute=minute, second=0)
 
     except Exception:
         fallback_hour, fallback_minute = fallback.split(":")
-        return datetime.time(
-            hour=int(fallback_hour),
-            minute=int(fallback_minute),
-            second=0
-        )
+        return datetime.time(hour=int(fallback_hour), minute=int(fallback_minute), second=0)
 
 
-# ================== قاعدة البيانات ==================
+def format_time_from_timestamp(ts):
+    if not ts:
+        return "غير متوفر"
+    return datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+
+
+# ================== DATABASE ==================
 
 def init_db():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
+
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS users(
+        user_id INTEGER PRIMARY KEY,
+        lang TEXT DEFAULT 'ar',
+        adhkar_lang TEXT DEFAULT 'ar',
+        created_at INTEGER DEFAULT 0
+    )
+    """)
 
     c.execute("""
     CREATE TABLE IF NOT EXISTS saved(
@@ -308,9 +391,11 @@ def init_db():
     """)
 
     c.execute("""
-    CREATE TABLE IF NOT EXISTS users(
+    CREATE TABLE IF NOT EXISTS adhkar_reminders(
         user_id INTEGER PRIMARY KEY,
-        lang TEXT DEFAULT 'ar',
+        chat_id INTEGER NOT NULL,
+        morning INTEGER DEFAULT 0,
+        evening INTEGER DEFAULT 0,
         created_at INTEGER DEFAULT 0
     )
     """)
@@ -337,15 +422,12 @@ def init_db():
     )
     """)
 
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS adhkar_reminders(
-        user_id INTEGER PRIMARY KEY,
-        chat_id INTEGER NOT NULL,
-        morning INTEGER DEFAULT 0,
-        evening INTEGER DEFAULT 0,
-        created_at INTEGER DEFAULT 0
-    )
-    """)
+    c.execute("PRAGMA table_info(users)")
+    user_cols = [row[1] for row in c.fetchall()]
+    if "adhkar_lang" not in user_cols:
+        c.execute("ALTER TABLE users ADD COLUMN adhkar_lang TEXT DEFAULT 'ar'")
+    if "created_at" not in user_cols:
+        c.execute("ALTER TABLE users ADD COLUMN created_at INTEGER DEFAULT 0")
 
     conn.commit()
     conn.close()
@@ -355,9 +437,30 @@ def add_user(user_id):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
     c.execute(
-        "INSERT OR IGNORE INTO users(user_id, created_at) VALUES(?, ?)",
+        "INSERT OR IGNORE INTO users(user_id, created_at, adhkar_lang) VALUES(?, ?, 'ar')",
         (user_id, now_timestamp())
     )
+    conn.commit()
+    conn.close()
+
+
+def get_adhkar_lang(user_id):
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("SELECT adhkar_lang FROM users WHERE user_id=?", (user_id,))
+    row = c.fetchone()
+    conn.close()
+
+    if not row or not row[0]:
+        return "ar"
+
+    return row[0]
+
+
+def set_adhkar_lang(user_id, lang):
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("UPDATE users SET adhkar_lang=? WHERE user_id=?", (lang, user_id))
     conn.commit()
     conn.close()
 
@@ -371,6 +474,14 @@ def users_count():
     return count
 
 
+def save_hadith(user_id, text):
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("INSERT INTO saved(user_id, text, created_at) VALUES (?, ?, ?)", (user_id, text, now_timestamp()))
+    conn.commit()
+    conn.close()
+
+
 def saved_count():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -380,24 +491,10 @@ def saved_count():
     return count
 
 
-def save_hadith(user_id, text):
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute(
-        "INSERT INTO saved(user_id, text, created_at) VALUES (?, ?, ?)",
-        (user_id, text, now_timestamp())
-    )
-    conn.commit()
-    conn.close()
-
-
 def get_saved_hadiths(user_id, limit=5):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-    c.execute(
-        "SELECT text, created_at FROM saved WHERE user_id=? ORDER BY created_at DESC LIMIT ?",
-        (user_id, limit)
-    )
+    c.execute("SELECT text, created_at FROM saved WHERE user_id=? ORDER BY created_at DESC LIMIT ?", (user_id, limit))
     rows = c.fetchall()
     conn.close()
     return rows
@@ -413,15 +510,9 @@ def set_adhkar_reminder(user_id, chat_id, kind, enabled):
     """, (user_id, chat_id, now_timestamp()))
 
     if kind == "morning":
-        c.execute(
-            "UPDATE adhkar_reminders SET morning=?, chat_id=? WHERE user_id=?",
-            (1 if enabled else 0, chat_id, user_id)
-        )
+        c.execute("UPDATE adhkar_reminders SET morning=?, chat_id=? WHERE user_id=?", (1 if enabled else 0, chat_id, user_id))
     elif kind == "evening":
-        c.execute(
-            "UPDATE adhkar_reminders SET evening=?, chat_id=? WHERE user_id=?",
-            (1 if enabled else 0, chat_id, user_id)
-        )
+        c.execute("UPDATE adhkar_reminders SET evening=?, chat_id=? WHERE user_id=?", (1 if enabled else 0, chat_id, user_id))
 
     conn.commit()
     conn.close()
@@ -430,10 +521,7 @@ def set_adhkar_reminder(user_id, chat_id, kind, enabled):
 def get_adhkar_reminder_status(user_id):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-    c.execute(
-        "SELECT morning, evening FROM adhkar_reminders WHERE user_id=?",
-        (user_id,)
-    )
+    c.execute("SELECT morning, evening FROM adhkar_reminders WHERE user_id=?", (user_id,))
     row = c.fetchone()
     conn.close()
 
@@ -458,34 +546,12 @@ def get_adhkar_subscribers(kind):
 
 
 def log_channel_post(post_type="hadith", item_id=None, source="bot"):
-    ts = now_timestamp()
-    hour = datetime.datetime.now().hour
-
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-    c.execute(
-        """
-        INSERT INTO channel_posts(post_type, item_id, posted_at, hour, source)
-        VALUES (?, ?, ?, ?, ?)
-        """,
-        (post_type, str(item_id or ""), ts, hour, source)
-    )
-    conn.commit()
-    conn.close()
-
-
-def log_skipped_post(post_type, reason, source="auto_duplicate_protection"):
     ts = now_timestamp()
-    hour = datetime.datetime.now().hour
-
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
     c.execute(
-        """
-        INSERT INTO skipped_posts(post_type, reason, skipped_at, hour, source)
-        VALUES (?, ?, ?, ?, ?)
-        """,
-        (post_type, reason, ts, hour, source)
+        "INSERT INTO channel_posts(post_type, item_id, posted_at, hour, source) VALUES (?, ?, ?, ?, ?)",
+        (post_type, str(item_id or ""), ts, datetime.datetime.now().hour, source)
     )
     conn.commit()
     conn.close()
@@ -500,15 +566,6 @@ def channel_posts_count():
     return count
 
 
-def skipped_posts_count():
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("SELECT COUNT(*) FROM skipped_posts")
-    count = c.fetchone()[0]
-    conn.close()
-    return count
-
-
 def channel_posts_count_by_type(post_type):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -518,100 +575,47 @@ def channel_posts_count_by_type(post_type):
     return count
 
 
-def last_auto_post_by_type(post_type):
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("""
-        SELECT post_type, item_id, posted_at, hour, source
-        FROM channel_posts
-        WHERE post_type = ?
-          AND source LIKE 'auto_%'
-        ORDER BY posted_at DESC
-        LIMIT 1
-    """, (post_type,))
-    row = c.fetchone()
-    conn.close()
-    return row
-
-
-def was_auto_posted_recently(post_type, min_gap_hours):
-    last_post = last_auto_post_by_type(post_type)
-
-    if not last_post:
-        return False, None
-
-    _, item_id, posted_at, hour, source = last_post
-    seconds_gap = min_gap_hours * 60 * 60
-    elapsed = now_timestamp() - int(posted_at)
-
-    if elapsed < seconds_gap:
-        return True, last_post
-
-    return False, last_post
-
-
-# ================== HadeethEnc API ==================
+# ================== HADITH / QURAN API ==================
 
 def get_random_hadith_id():
     response = requests.get(
         LIST_API,
-        params={
-            "language": "ar",
-            "category_id": 1,
-            "page": random.randint(1, 5),
-            "per_page": 10
-        },
+        params={"language": "ar", "category_id": 1, "page": random.randint(1, 5), "per_page": 10},
         timeout=15
     )
     response.raise_for_status()
-
-    data = response.json()
-    hadiths = data.get("data", [])
-
+    hadiths = response.json().get("data", [])
     if not hadiths:
         return None
-
     return random.choice(hadiths).get("id")
 
 
 def get_hadith_by_id(hadith_id, lang):
-    response = requests.get(
-        HADEETH_API,
-        params={
-            "language": lang,
-            "id": hadith_id
-        },
-        timeout=15
-    )
+    response = requests.get(HADEETH_API, params={"language": lang, "id": hadith_id}, timeout=15)
     response.raise_for_status()
-
     data = response.json()
-
     return {
         "text": data.get("hadeeth", "") or data.get("title", ""),
-        "attribution": data.get("attribution", ""),
+        "attribution": data.get("attribution", "HadeethEnc"),
         "grade": data.get("grade", ""),
-        "reference": data.get("reference", "")
     }
 
 
 def random_hadith(lang="ar"):
     try:
         hid = get_random_hadith_id()
-
         if not hid:
             return "❌ لم يتم العثور على حديث."
 
         h = get_hadith_by_id(hid, lang)
 
         return f"""🕊️ <b>حديث نبوي</b>{line()}
-{esc(h.get("text", ""))}
+{esc(h["text"])}
 {line()}
-📚 <b>المصدر:</b> {esc(h.get("attribution", "HadeethEnc"))}
-✅ <b>الدرجة:</b> {esc(h.get("grade", ""))}
+📚 <b>المصدر:</b> {esc(h["attribution"])}
+✅ <b>الدرجة:</b> {esc(h["grade"])}
 🔢 <b>ID:</b> <code>{esc(hid)}</code>
 """
-
     except Exception as e:
         return f"❌ خطأ في جلب الحديث:\n<code>{esc(e)}</code>"
 
@@ -619,7 +623,6 @@ def random_hadith(lang="ar"):
 def hadith_channel_message():
     try:
         hid = get_random_hadith_id()
-
         if not hid:
             return "❌ تعذر جلب حديث اليوم.", None
 
@@ -636,69 +639,53 @@ def hadith_channel_message():
 
 🇸🇦 <b>العربية</b>
 
-{esc(ar.get("text", ""))}
+{esc(ar["text"])}
 
 ━━━━━━━━━━━━━━
 
 🇬🇧 <b>English</b>
 
-{esc(en.get("text", ""))}
+{esc(en["text"])}
 
 ━━━━━━━━━━━━━━
 
 🇩🇪 <b>Deutsch</b>
 
-{esc(de.get("text", ""))}
+{esc(de["text"])}
 
 ━━━━━━━━━━━━━━
 
-📚 <b>المصدر:</b> {esc(ar.get("attribution", "HadeethEnc"))}
-✅ <b>الدرجة:</b> {esc(ar.get("grade", ""))}
+📚 <b>المصدر:</b> {esc(ar["attribution"])}
+✅ <b>الدرجة:</b> {esc(ar["grade"])}
 🔢 <b>HadeethEnc ID:</b> <code>{esc(hid)}</code>
 
 🌍 {esc(CHANNEL_ID)}
 """
         return text, hid
-
     except Exception as e:
         return f"❌ خطأ في بناء رسالة الحديث:\n<code>{esc(e)}</code>", None
 
 
-# ================== Quran API ==================
-
-def get_random_ayah_number():
-    return random.randint(1, 6236)
-
-
 def get_ayah_by_number(number, edition):
-    response = requests.get(
-        f"{QURAN_API}/ayah/{number}/{edition}",
-        timeout=15
-    )
+    response = requests.get(f"{QURAN_API}/ayah/{number}/{edition}", timeout=15)
     response.raise_for_status()
-
     data = response.json()["data"]
-
     return {
         "text": data.get("text", ""),
         "surah_name": data.get("surah", {}).get("name", ""),
         "surah_english": data.get("surah", {}).get("englishName", ""),
         "surah_number": data.get("surah", {}).get("number", ""),
         "ayah_number": data.get("numberInSurah", ""),
-        "global_number": data.get("number", number),
-        "edition": data.get("edition", {}).get("englishName", edition)
     }
 
 
 def quran_channel_message():
     try:
-        number = get_random_ayah_number()
-
+        number = random.randint(1, 6236)
         ar = get_ayah_by_number(number, "quran-uthmani")
         en = get_ayah_by_number(number, "en.sahih")
         de = get_ayah_by_number(number, "de.aburida")
 
-        surah_label = f"{ar['surah_name']} | {en['surah_english']}"
         ayah_ref = f"{ar['surah_number']}:{ar['ayah_number']}"
 
         text = f"""📖 <b>آية اليوم | Ayah of the Day | Vers des Tages</b>
@@ -723,54 +710,61 @@ def quran_channel_message():
 
 ━━━━━━━━━━━━━━
 
-📖 <b>السورة:</b> {esc(surah_label)}
+📖 <b>السورة:</b> {esc(ar["surah_name"])} | {esc(en["surah_english"])}
 🔢 <b>الآية:</b> <code>{esc(ayah_ref)}</code>
-🌐 <b>المصدر التقني:</b> AlQuran Cloud API
 
 🌍 {esc(CHANNEL_ID)}
 """
         return text, ayah_ref
-
     except Exception as e:
         return f"❌ خطأ في بناء رسالة الآية:\n<code>{esc(e)}</code>", None
 
 
 def mixed_channel_message():
-    try:
-        quran_text, ayah_ref = quran_channel_message()
-        hadith_text, hid = hadith_channel_message()
-
-        text = f"""📩 <b>رسالة إيمانية | Faith Reminder</b>
-
-━━━━━━━━━━━━━━
+    quran_text, ayah_ref = quran_channel_message()
+    hadith_text, hid = hadith_channel_message()
+    return f"""📩 <b>رسالة إيمانية | Faith Reminder</b>
 
 {quran_text}
 
 ━━━━━━━━━━━━━━
 
 {hadith_text}
-"""
-        item_id = f"ayah:{ayah_ref}|hadith:{hid}"
-        return text, item_id
-
-    except Exception as e:
-        return f"❌ خطأ في بناء الرسالة المختلطة:\n<code>{esc(e)}</code>", None
+""", f"ayah:{ayah_ref}|hadith:{hid}"
 
 
-# ================== الأذكار UI ==================
+# ================== ADHKAR UI ==================
 
-def adhkar_main_menu():
+def lang_name(lang):
+    if lang == "en":
+        return "English"
+    if lang == "de":
+        return "Deutsch"
+    return "العربية"
+
+
+def adhkar_main_menu(user_id):
+    lang = get_adhkar_lang(user_id)
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("🌅 أذكار الصباح", callback_data="adhkar_morning_0")],
         [InlineKeyboardButton("🌙 أذكار المساء", callback_data="adhkar_evening_0")],
+        [InlineKeyboardButton(f"🌍 لغة الأذكار: {lang_name(lang)}", callback_data="adhkar_lang_menu")],
         [InlineKeyboardButton("⏰ تذكير الأذكار", callback_data="adhkar_reminders")],
         [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")]
     ])
 
 
+def adhkar_lang_menu():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🇸🇦 العربية", callback_data="adhkar_lang_ar")],
+        [InlineKeyboardButton("🇬🇧 English", callback_data="adhkar_lang_en")],
+        [InlineKeyboardButton("🇩🇪 Deutsch", callback_data="adhkar_lang_de")],
+        [InlineKeyboardButton("⬅️ رجوع للأذكار", callback_data="adhkar_menu")]
+    ])
+
+
 def adhkar_reminder_menu(user_id):
     morning, evening = get_adhkar_reminder_status(user_id)
-
     morning_status = "✅ مفعل" if morning else "❌ غير مفعل"
     evening_status = "✅ مفعل" if evening else "❌ غير مفعل"
 
@@ -784,7 +778,6 @@ def adhkar_reminder_menu(user_id):
 
 def adhkar_navigation(kind, index, total):
     buttons = []
-
     row = []
 
     if index > 0:
@@ -799,38 +792,80 @@ def adhkar_navigation(kind, index, total):
     buttons.append([InlineKeyboardButton("✅ أنهيت الأذكار", callback_data=f"adhkar_done_{kind}")])
     buttons.append([InlineKeyboardButton("⬅️ رجوع للأذكار", callback_data="adhkar_menu")])
     buttons.append([InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")])
-
     return InlineKeyboardMarkup(buttons)
 
 
-def render_adhkar(kind, index):
+def render_adhkar(kind, index, lang):
     adhkar_list = MORNING_ADHKAR if kind == "morning" else EVENING_ADHKAR
-    title = "🌅 أذكار الصباح" if kind == "morning" else "🌙 أذكار المساء"
-
     total = len(adhkar_list)
 
     if index < 0:
         index = 0
-
     if index >= total:
         index = total - 1
 
     item = adhkar_list[index]
 
-    text = f"""{title}
+    if kind == "morning":
+        title_ar = "🌅 أذكار الصباح"
+        title_en = "🌅 Morning Adhkar"
+        title_de = "🌅 Morgen-Adhkar"
+    else:
+        title_ar = "🌙 أذكار المساء"
+        title_en = "🌙 Evening Adhkar"
+        title_de = "🌙 Abend-Adhkar"
+
+    if lang == "en":
+        text = f"""{title_en}
+
+<b>Dhikr {index + 1}/{total}</b>
+{line()}
+<b>Arabic text:</b>
+
+{esc(item["ar"])}
+
+{line()}
+<b>Meaning in English:</b>
+
+{esc(item["en"])}
+
+{line()}
+🔁 <b>Repeat:</b> {esc(item["repeat_en"])}
+📚 <b>Source:</b> {esc(item["source_en"])}
+"""
+    elif lang == "de":
+        text = f"""{title_de}
+
+<b>Dhikr {index + 1}/{total}</b>
+{line()}
+<b>Arabischer Text:</b>
+
+{esc(item["ar"])}
+
+{line()}
+<b>Bedeutung auf Deutsch:</b>
+
+{esc(item["de"])}
+
+{line()}
+🔁 <b>Wiederholung:</b> {esc(item["repeat_de"])}
+📚 <b>Quelle:</b> {esc(item["source_de"])}
+"""
+    else:
+        text = f"""{title_ar}
 
 <b>الذكر {index + 1}/{total}</b>
 {line()}
-{esc(item["text"])}
+{esc(item["ar"])}
 {line()}
-🔁 <b>التكرار:</b> {esc(item["repeat"])}
-📚 <b>المصدر:</b> {esc(item["source"])}
+🔁 <b>التكرار:</b> {esc(item["repeat_ar"])}
+📚 <b>المصدر:</b> {esc(item["source_ar"])}
 """
 
     return text, adhkar_navigation(kind, index, total)
 
 
-# ================== القوائم العامة ==================
+# ================== MENUS ==================
 
 def main_menu(user_id):
     buttons = [
@@ -861,19 +896,14 @@ def admin_menu():
         [InlineKeyboardButton("🕊️ نشر حديث الآن", callback_data="admin_post_hadith")],
         [InlineKeyboardButton("📖 نشر آية الآن", callback_data="admin_post_quran")],
         [InlineKeyboardButton("📩 نشر آية + حديث", callback_data="admin_post_mixed")],
-        [InlineKeyboardButton("👀 معاينة حديث", callback_data="admin_preview_hadith")],
-        [InlineKeyboardButton("👀 معاينة آية", callback_data="admin_preview_quran")],
-        [InlineKeyboardButton("📊 لوحة الإحصائيات", callback_data="admin_stats")],
-        [InlineKeyboardButton("🛡️ حالة الحماية من التكرار", callback_data="admin_duplicate_status")],
+        [InlineKeyboardButton("📊 الإحصائيات", callback_data="admin_stats")],
         [InlineKeyboardButton("✍️ إرسال رسالة مخصصة للقناة", callback_data="admin_custom_post")],
         [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")]
     ])
 
 
 def back():
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")]
-    ])
+    return InlineKeyboardMarkup([[InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")]])
 
 
 def admin_back():
@@ -883,7 +913,7 @@ def admin_back():
     ])
 
 
-# ================== إرسال آمن ==================
+# ================== SAFE SEND ==================
 
 async def safe_edit(q, text, markup=None):
     try:
@@ -909,35 +939,10 @@ async def send_channel_message(context, text, post_type, item_id, source):
         parse_mode="HTML",
         disable_web_page_preview=True
     )
-    log_channel_post(post_type=post_type, item_id=item_id, source=source)
+    log_channel_post(post_type, item_id, source)
 
 
-async def send_auto_channel_message(context, post_type, text_builder, source):
-    recently_posted, last_post = was_auto_posted_recently(
-        post_type=post_type,
-        min_gap_hours=AUTO_POST_MIN_GAP_HOURS
-    )
-
-    if recently_posted:
-        reason = f"Skipped duplicate auto post. Minimum gap is {AUTO_POST_MIN_GAP_HOURS} hours."
-        log_skipped_post(post_type=post_type, reason=reason, source=source)
-        print(f"🛡️ Skipped {post_type}: {reason}")
-        return False
-
-    text, item_id = text_builder()
-
-    await context.bot.send_message(
-        chat_id=CHANNEL_ID,
-        text=text,
-        parse_mode="HTML",
-        disable_web_page_preview=True
-    )
-
-    log_channel_post(post_type=post_type, item_id=item_id, source=source)
-    return True
-
-
-# ================== الأوامر ==================
+# ================== COMMANDS ==================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -967,88 +972,50 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def test_channel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
-    add_user(user_id)
-
     if not is_admin(user_id):
         await update.message.reply_text("❌ هذا الأمر خاص بالمشرف فقط.")
         return
 
     text, hid = hadith_channel_message()
-
-    await send_channel_message(
-        context=context,
-        text=text,
-        post_type="hadith",
-        item_id=hid,
-        source="test_command"
-    )
-
+    await send_channel_message(context, text, "hadith", hid, "test_command")
     await update.message.reply_text("✅ تم نشر رسالة اختبار في القناة.")
 
 
-# ================== النشر التلقائي ==================
+# ================== AUTO POSTS ==================
 
 async def auto_publish_hadith(context: ContextTypes.DEFAULT_TYPE):
-    try:
-        sent = await send_auto_channel_message(
-            context=context,
-            post_type="hadith",
-            text_builder=hadith_channel_message,
-            source="auto_hadith"
-        )
-
-        if sent:
-            print("✅ Scheduled hadith post sent.")
-
-    except Exception as e:
-        print(f"❌ Scheduled hadith post error: {e}")
+    text, hid = hadith_channel_message()
+    await send_channel_message(context, text, "hadith", hid, "auto_hadith")
 
 
 async def auto_publish_quran(context: ContextTypes.DEFAULT_TYPE):
-    try:
-        sent = await send_auto_channel_message(
-            context=context,
-            post_type="quran",
-            text_builder=quran_channel_message,
-            source="auto_quran"
-        )
-
-        if sent:
-            print("✅ Scheduled quran post sent.")
-
-    except Exception as e:
-        print(f"❌ Scheduled quran post error: {e}")
+    text, ayah_ref = quran_channel_message()
+    await send_channel_message(context, text, "quran", ayah_ref, "auto_quran")
 
 
 async def auto_publish_mixed(context: ContextTypes.DEFAULT_TYPE):
-    try:
-        sent = await send_auto_channel_message(
-            context=context,
-            post_type="mixed",
-            text_builder=mixed_channel_message,
-            source="auto_mixed"
-        )
+    text, item_id = mixed_channel_message()
+    await send_channel_message(context, text, "mixed", item_id, "auto_mixed")
 
-        if sent:
-            print("✅ Scheduled mixed post sent.")
-
-    except Exception as e:
-        print(f"❌ Scheduled mixed post error: {e}")
-
-
-# ================== تذكير الأذكار ==================
 
 async def send_morning_adhkar_reminders(context: ContextTypes.DEFAULT_TYPE):
-    subscribers = get_adhkar_subscribers("morning")
+    for user_id, chat_id in get_adhkar_subscribers("morning"):
+        lang = get_adhkar_lang(user_id)
+        if lang == "en":
+            text = "🌅 <b>Morning Adhkar Reminder</b>\n\nStart reading your morning adhkar now."
+            button = "🌅 Start Morning Adhkar"
+        elif lang == "de":
+            text = "🌅 <b>Erinnerung an Morgen-Adhkar</b>\n\nBeginne jetzt mit deinen Morgen-Adhkar."
+            button = "🌅 Morgen-Adhkar starten"
+        else:
+            text = "🌅 <b>تذكير أذكار الصباح</b>\n\nابدأ بقراءة أذكار الصباح الآن."
+            button = "🌅 ابدأ أذكار الصباح"
 
-    for user_id, chat_id in subscribers:
         try:
             await context.bot.send_message(
                 chat_id=chat_id,
-                text="🌅 <b>تذكير أذكار الصباح</b>\n\nابدأ بقراءة أذكار الصباح الآن.",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("🌅 ابدأ أذكار الصباح", callback_data="adhkar_morning_0")]
-                ]),
+                text=text,
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(button, callback_data="adhkar_morning_0")]]),
                 parse_mode="HTML"
             )
         except Exception as e:
@@ -1056,23 +1023,30 @@ async def send_morning_adhkar_reminders(context: ContextTypes.DEFAULT_TYPE):
 
 
 async def send_evening_adhkar_reminders(context: ContextTypes.DEFAULT_TYPE):
-    subscribers = get_adhkar_subscribers("evening")
+    for user_id, chat_id in get_adhkar_subscribers("evening"):
+        lang = get_adhkar_lang(user_id)
+        if lang == "en":
+            text = "🌙 <b>Evening Adhkar Reminder</b>\n\nStart reading your evening adhkar now."
+            button = "🌙 Start Evening Adhkar"
+        elif lang == "de":
+            text = "🌙 <b>Erinnerung an Abend-Adhkar</b>\n\nBeginne jetzt mit deinen Abend-Adhkar."
+            button = "🌙 Abend-Adhkar starten"
+        else:
+            text = "🌙 <b>تذكير أذكار المساء</b>\n\nابدأ بقراءة أذكار المساء الآن."
+            button = "🌙 ابدأ أذكار المساء"
 
-    for user_id, chat_id in subscribers:
         try:
             await context.bot.send_message(
                 chat_id=chat_id,
-                text="🌙 <b>تذكير أذكار المساء</b>\n\nابدأ بقراءة أذكار المساء الآن.",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("🌙 ابدأ أذكار المساء", callback_data="adhkar_evening_0")]
-                ]),
+                text=text,
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(button, callback_data="adhkar_evening_0")]]),
                 parse_mode="HTML"
             )
         except Exception as e:
             print(f"Evening adhkar reminder error for {user_id}: {e}")
 
 
-# ================== Callback Handler ==================
+# ================== CALLBACK HANDLER ==================
 
 async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
@@ -1085,17 +1059,12 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = q.data
 
     if data == "home":
-        await safe_edit(
-            q,
-            "🌉 <b>Ummah Bridge</b>\n\nاختر من القائمة:",
-            main_menu(user_id)
-        )
+        await safe_edit(q, "🌉 <b>Ummah Bridge</b>\n\nاختر من القائمة:", main_menu(user_id))
 
     elif data == "quran":
         try:
             res = requests.get(f"{QURAN_API}/surah/1/quran-uthmani", timeout=15)
             res.raise_for_status()
-
             ayat = res.json()["data"]["ayahs"]
 
             text = "📖 <b>سورة الفاتحة</b>" + line()
@@ -1103,7 +1072,6 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 text += f"{esc(a['text'])}\n"
 
             await safe_edit(q, text, back())
-
         except Exception as e:
             await safe_edit(q, f"❌ خطأ في جلب القرآن:\n<code>{esc(e)}</code>", back())
 
@@ -1113,73 +1081,83 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "random":
         h = random_hadith("ar")
         context.user_data["last"] = h
-
         await safe_edit(q, h, hadith_menu())
 
     elif data == "save":
         h = context.user_data.get("last")
-
         if not h:
             await q.answer("لا يوجد حديث لحفظه", show_alert=True)
             return
 
         save_hadith(user_id, h)
-
         await q.answer("تم الحفظ ✅", show_alert=True)
 
     elif data == "saved":
-        rows = get_saved_hadiths(user_id, limit=5)
+        rows = get_saved_hadiths(user_id)
 
         if not rows:
             text = "❤️ لا توجد محفوظات بعد."
         else:
             text = "❤️ <b>محفوظاتك:</b>\n\n"
             for i, row in enumerate(rows, 1):
-                saved_text = row[0]
-                created_at = row[1]
-                text += (
-                    f"<b>#{i}</b>\n"
-                    f"🕒 {esc(format_time_from_timestamp(created_at))}\n"
-                    f"{esc(saved_text[:500])}\n\n"
-                    f"━━━━━━━━━━━━━━\n\n"
-                )
+                text += f"<b>#{i}</b>\n{esc(row[0][:500])}\n\n━━━━━━━━━━━━━━\n\n"
 
         await safe_edit(q, text, back())
 
     elif data == "adhkar_menu":
+        lang = get_adhkar_lang(user_id)
         await safe_edit(
             q,
-            "🤲 <b>قسم الأذكار</b>\n\nاختر ما تريد قراءته:",
-            adhkar_main_menu()
+            f"🤲 <b>قسم الأذكار</b>\n\n🌍 اللغة الحالية: <b>{esc(lang_name(lang))}</b>\n\nاختر ما تريد قراءته:",
+            adhkar_main_menu(user_id)
+        )
+
+    elif data == "adhkar_lang_menu":
+        await safe_edit(q, "🌍 <b>اختر لغة الأذكار:</b>", adhkar_lang_menu())
+
+    elif data.startswith("adhkar_lang_"):
+        lang = data.split("_")[-1]
+        set_adhkar_lang(user_id, lang)
+        await safe_edit(
+            q,
+            f"✅ تم تغيير لغة الأذكار إلى: <b>{esc(lang_name(lang))}</b>",
+            adhkar_main_menu(user_id)
         )
 
     elif data.startswith("adhkar_morning_"):
         index = int(data.split("_")[-1])
-        text, markup = render_adhkar("morning", index)
+        lang = get_adhkar_lang(user_id)
+        text, markup = render_adhkar("morning", index, lang)
         await safe_edit(q, text, markup)
 
     elif data.startswith("adhkar_evening_"):
         index = int(data.split("_")[-1])
-        text, markup = render_adhkar("evening", index)
+        lang = get_adhkar_lang(user_id)
+        text, markup = render_adhkar("evening", index, lang)
         await safe_edit(q, text, markup)
 
     elif data == "adhkar_done_morning":
-        await safe_edit(
-            q,
-            "✅ <b>أحسنت.</b>\n\nانتهيت من أذكار الصباح.\nنسأل الله أن يحفظك ويبارك يومك.",
-            adhkar_main_menu()
-        )
+        lang = get_adhkar_lang(user_id)
+        if lang == "en":
+            text = "✅ <b>Well done.</b>\n\nYou finished the morning adhkar."
+        elif lang == "de":
+            text = "✅ <b>Sehr gut.</b>\n\nDu hast die Morgen-Adhkar beendet."
+        else:
+            text = "✅ <b>أحسنت.</b>\n\nانتهيت من أذكار الصباح.\nنسأل الله أن يحفظك ويبارك يومك."
+        await safe_edit(q, text, adhkar_main_menu(user_id))
 
     elif data == "adhkar_done_evening":
-        await safe_edit(
-            q,
-            "✅ <b>أحسنت.</b>\n\nانتهيت من أذكار المساء.\nنسأل الله أن يحفظك في ليلتك.",
-            adhkar_main_menu()
-        )
+        lang = get_adhkar_lang(user_id)
+        if lang == "en":
+            text = "✅ <b>Well done.</b>\n\nYou finished the evening adhkar."
+        elif lang == "de":
+            text = "✅ <b>Sehr gut.</b>\n\nDu hast die Abend-Adhkar beendet."
+        else:
+            text = "✅ <b>أحسنت.</b>\n\nانتهيت من أذكار المساء.\nنسأل الله أن يحفظك في ليلتك."
+        await safe_edit(q, text, adhkar_main_menu(user_id))
 
     elif data == "adhkar_reminders":
         morning, evening = get_adhkar_reminder_status(user_id)
-
         text = f"""⏰ <b>تذكير الأذكار</b>
 
 🌅 تذكير الصباح: {"✅ مفعل" if morning else "❌ غير مفعل"}
@@ -1188,38 +1166,19 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🕘 وقت الصباح الحالي: <code>{esc(MORNING_ADHKAR_TIME)}</code>
 🕕 وقت المساء الحالي: <code>{esc(EVENING_ADHKAR_TIME)}</code>
 """
-
         await safe_edit(q, text, adhkar_reminder_menu(user_id))
 
     elif data == "adhkar_toggle_morning":
         morning, evening = get_adhkar_reminder_status(user_id)
-        new_value = 0 if morning else 1
-        set_adhkar_reminder(user_id, chat_id, "morning", new_value)
-
+        set_adhkar_reminder(user_id, chat_id, "morning", 0 if morning else 1)
         await q.answer("تم تحديث تذكير الصباح ✅", show_alert=True)
-
-        morning, evening = get_adhkar_reminder_status(user_id)
-        text = f"""⏰ <b>تذكير الأذكار</b>
-
-🌅 تذكير الصباح: {"✅ مفعل" if morning else "❌ غير مفعل"}
-🌙 تذكير المساء: {"✅ مفعل" if evening else "❌ غير مفعل"}
-"""
-        await safe_edit(q, text, adhkar_reminder_menu(user_id))
+        await safe_edit(q, "⏰ <b>تم تحديث إعدادات التذكير.</b>", adhkar_reminder_menu(user_id))
 
     elif data == "adhkar_toggle_evening":
         morning, evening = get_adhkar_reminder_status(user_id)
-        new_value = 0 if evening else 1
-        set_adhkar_reminder(user_id, chat_id, "evening", new_value)
-
+        set_adhkar_reminder(user_id, chat_id, "evening", 0 if evening else 1)
         await q.answer("تم تحديث تذكير المساء ✅", show_alert=True)
-
-        morning, evening = get_adhkar_reminder_status(user_id)
-        text = f"""⏰ <b>تذكير الأذكار</b>
-
-🌅 تذكير الصباح: {"✅ مفعل" if morning else "❌ غير مفعل"}
-🌙 تذكير المساء: {"✅ مفعل" if evening else "❌ غير مفعل"}
-"""
-        await safe_edit(q, text, adhkar_reminder_menu(user_id))
+        await safe_edit(q, "⏰ <b>تم تحديث إعدادات التذكير.</b>", adhkar_reminder_menu(user_id))
 
     elif data == "about":
         await safe_edit(
@@ -1235,7 +1194,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🚫 لا نقدّم آراء شخصية.
 ✅ ننشر نصوصًا موثقة ومترجمة.
 
-🤲 يحتوي البوت على أذكار الصباح والمساء.
+🤲 يحتوي البوت على أذكار الصباح والمساء بثلاث لغات.
 
 🌍 القناة:
 {esc(CHANNEL_ID)}
@@ -1247,18 +1206,12 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not is_admin(user_id):
             await q.answer("غير مسموح", show_alert=True)
             return
-
-        await safe_edit(
-            q,
-            "🛠️ <b>لوحة الإدارة</b>\n\nاختر إجراء:",
-            admin_menu()
-        )
+        await safe_edit(q, "🛠️ <b>لوحة الإدارة</b>\n\nاختر إجراء:", admin_menu())
 
     elif data == "admin_post_hadith":
         if not is_admin(user_id):
             await q.answer("غير مسموح", show_alert=True)
             return
-
         text, hid = hadith_channel_message()
         await send_channel_message(context, text, "hadith", hid, "admin_manual_hadith")
         await safe_edit(q, "✅ <b>تم نشر حديث في القناة.</b>", admin_menu())
@@ -1267,7 +1220,6 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not is_admin(user_id):
             await q.answer("غير مسموح", show_alert=True)
             return
-
         text, ayah_ref = quran_channel_message()
         await send_channel_message(context, text, "quran", ayah_ref, "admin_manual_quran")
         await safe_edit(q, "✅ <b>تم نشر آية في القناة.</b>", admin_menu())
@@ -1276,7 +1228,6 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not is_admin(user_id):
             await q.answer("غير مسموح", show_alert=True)
             return
-
         text, item_id = mixed_channel_message()
         await send_channel_message(context, text, "mixed", item_id, "admin_manual_mixed")
         await safe_edit(q, "✅ <b>تم نشر آية + حديث في القناة.</b>", admin_menu())
@@ -1304,11 +1255,6 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🤲 <b>مشتركو تذكير الصباح:</b> {morning_count}
 🤲 <b>مشتركو تذكير المساء:</b> {evening_count}
 
-🕘 <b>أوقات النشر:</b>
-• حديث: <code>{esc(HADITH_POST_TIME)}</code>
-• آية: <code>{esc(QURAN_POST_TIME)}</code>
-• آية + حديث: <code>{esc(MIXED_POST_TIME)}</code>
-
 ⏰ <b>أوقات الأذكار:</b>
 • صباح: <code>{esc(MORNING_ADHKAR_TIME)}</code>
 • مساء: <code>{esc(EVENING_ADHKAR_TIME)}</code>
@@ -1318,38 +1264,15 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             admin_menu()
         )
 
-    elif data == "admin_duplicate_status":
-        if not is_admin(user_id):
-            await q.answer("غير مسموح", show_alert=True)
-            return
-
-        await safe_edit(
-            q,
-            f"""🛡️ <b>حالة الحماية من التكرار</b>
-
-مدة الحماية الحالية:
-<code>{AUTO_POST_MIN_GAP_HOURS} ساعات</code>
-
-هذه الحماية تمنع النشر التلقائي المتكرر لنفس نوع المنشور خلال المدة المحددة.
-""",
-            admin_back()
-        )
-
     elif data == "admin_custom_post":
         if not is_admin(user_id):
             await q.answer("غير مسموح", show_alert=True)
             return
-
         context.user_data["waiting_custom_post"] = True
-
-        await safe_edit(
-            q,
-            "✍️ <b>أرسل الآن الرسالة التي تريد نشرها في القناة.</b>\n\nسيتم نشر النص كما هو.",
-            admin_back()
-        )
+        await safe_edit(q, "✍️ <b>أرسل الآن الرسالة التي تريد نشرها في القناة.</b>", admin_back())
 
 
-# ================== رسائل النص ==================
+# ================== TEXT HANDLER ==================
 
 async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -1369,7 +1292,7 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             disable_web_page_preview=True
         )
 
-        log_channel_post(post_type="custom", item_id="", source="admin_custom")
+        log_channel_post("custom", "", "admin_custom")
 
         await update.message.reply_text(
             "✅ تم نشر الرسالة المخصصة في القناة.",
@@ -1377,7 +1300,7 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
-# ================== التشغيل ==================
+# ================== MAIN ==================
 
 def main():
     if not TOKEN:
@@ -1394,32 +1317,14 @@ def main():
     app.add_handler(CallbackQueryHandler(handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
 
-    app.job_queue.run_daily(
-        auto_publish_hadith,
-        time=parse_schedule_time(HADITH_POST_TIME, "09:00")
-    )
+    app.job_queue.run_daily(auto_publish_hadith, time=parse_schedule_time(HADITH_POST_TIME, "09:00"))
+    app.job_queue.run_daily(auto_publish_quran, time=parse_schedule_time(QURAN_POST_TIME, "15:00"))
+    app.job_queue.run_daily(auto_publish_mixed, time=parse_schedule_time(MIXED_POST_TIME, "21:00"))
 
-    app.job_queue.run_daily(
-        auto_publish_quran,
-        time=parse_schedule_time(QURAN_POST_TIME, "15:00")
-    )
+    app.job_queue.run_daily(send_morning_adhkar_reminders, time=parse_schedule_time(MORNING_ADHKAR_TIME, "06:00"))
+    app.job_queue.run_daily(send_evening_adhkar_reminders, time=parse_schedule_time(EVENING_ADHKAR_TIME, "18:00"))
 
-    app.job_queue.run_daily(
-        auto_publish_mixed,
-        time=parse_schedule_time(MIXED_POST_TIME, "21:00")
-    )
-
-    app.job_queue.run_daily(
-        send_morning_adhkar_reminders,
-        time=parse_schedule_time(MORNING_ADHKAR_TIME, "06:00")
-    )
-
-    app.job_queue.run_daily(
-        send_evening_adhkar_reminders,
-        time=parse_schedule_time(EVENING_ADHKAR_TIME, "18:00")
-    )
-
-    print("Bot running with Adhkar feature...")
+    print("Bot running with Adhkar in 3 languages...")
     print(f"Morning adhkar reminder: {MORNING_ADHKAR_TIME}")
     print(f"Evening adhkar reminder: {EVENING_ADHKAR_TIME}")
 
