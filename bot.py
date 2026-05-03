@@ -24,6 +24,7 @@ ADMIN_ID = int(os.environ.get("ADMIN_ID", "0"))
 HADITH_POST_TIME = os.environ.get("HADITH_POST_TIME", "09:00")
 QURAN_POST_TIME = os.environ.get("QURAN_POST_TIME", "15:00")
 MIXED_POST_TIME = os.environ.get("MIXED_POST_TIME", "21:00")
+AUTO_POST_MIN_GAP_HOURS = int(os.environ.get("AUTO_POST_MIN_GAP_HOURS", "6"))
 
 QURAN_API = "https://api.alquran.cloud/v1"
 HADEETH_API = "https://hadeethenc.com/api/v1/hadeeths/one/"
@@ -116,7 +117,18 @@ def init_db():
     )
     """)
 
-    # Migration للنسخ القديمة
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS skipped_posts(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        post_type TEXT NOT NULL,
+        reason TEXT NOT NULL,
+        skipped_at INTEGER NOT NULL,
+        hour INTEGER NOT NULL,
+        source TEXT DEFAULT 'auto'
+    )
+    """)
+
+    # Migrations للنسخ القديمة
     c.execute("PRAGMA table_info(saved)")
     saved_columns = [row[1] for row in c.fetchall()]
     if "created_at" not in saved_columns:
@@ -209,6 +221,23 @@ def log_channel_post(post_type="hadith", item_id=None, source="bot"):
     conn.close()
 
 
+def log_skipped_post(post_type, reason, source="auto_duplicate_protection"):
+    ts = now_timestamp()
+    hour = datetime.datetime.now().hour
+
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute(
+        """
+        INSERT INTO skipped_posts(post_type, reason, skipped_at, hour, source)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (post_type, reason, ts, hour, source)
+    )
+    conn.commit()
+    conn.close()
+
+
 def channel_posts_count():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -218,10 +247,28 @@ def channel_posts_count():
     return count
 
 
+def skipped_posts_count():
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM skipped_posts")
+    count = c.fetchone()[0]
+    conn.close()
+    return count
+
+
 def channel_posts_count_by_type(post_type):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
     c.execute("SELECT COUNT(*) FROM channel_posts WHERE post_type=?", (post_type,))
+    count = c.fetchone()[0]
+    conn.close()
+    return count
+
+
+def skipped_posts_count_by_type(post_type):
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM skipped_posts WHERE post_type=?", (post_type,))
     count = c.fetchone()[0]
     conn.close()
     return count
@@ -239,6 +286,52 @@ def last_channel_post():
     row = c.fetchone()
     conn.close()
     return row
+
+
+def last_skipped_post():
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("""
+        SELECT post_type, reason, skipped_at, hour, source
+        FROM skipped_posts
+        ORDER BY skipped_at DESC
+        LIMIT 1
+    """)
+    row = c.fetchone()
+    conn.close()
+    return row
+
+
+def last_auto_post_by_type(post_type):
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("""
+        SELECT post_type, item_id, posted_at, hour, source
+        FROM channel_posts
+        WHERE post_type = ?
+          AND source LIKE 'auto_%'
+        ORDER BY posted_at DESC
+        LIMIT 1
+    """, (post_type,))
+    row = c.fetchone()
+    conn.close()
+    return row
+
+
+def was_auto_posted_recently(post_type, min_gap_hours):
+    last_post = last_auto_post_by_type(post_type)
+
+    if not last_post:
+        return False, None
+
+    _, item_id, posted_at, hour, source = last_post
+    seconds_gap = min_gap_hours * 60 * 60
+    elapsed = now_timestamp() - int(posted_at)
+
+    if elapsed < seconds_gap:
+        return True, last_post
+
+    return False, last_post
 
 
 def posts_by_hour():
@@ -505,6 +598,7 @@ def admin_menu():
         [InlineKeyboardButton("👀 معاينة آية", callback_data="admin_preview_quran")],
         [InlineKeyboardButton("📊 لوحة الإحصائيات", callback_data="admin_stats")],
         [InlineKeyboardButton("🕒 إحصائيات أوقات النشر", callback_data="admin_time_stats")],
+        [InlineKeyboardButton("🛡️ حالة الحماية من التكرار", callback_data="admin_duplicate_status")],
         [InlineKeyboardButton("✍️ إرسال رسالة مخصصة للقناة", callback_data="admin_custom_post")],
         [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")]
     ])
@@ -550,6 +644,31 @@ async def send_channel_message(context, text, post_type, item_id, source):
         disable_web_page_preview=True
     )
     log_channel_post(post_type=post_type, item_id=item_id, source=source)
+
+
+async def send_auto_channel_message(context, post_type, text_builder, source):
+    recently_posted, last_post = was_auto_posted_recently(
+        post_type=post_type,
+        min_gap_hours=AUTO_POST_MIN_GAP_HOURS
+    )
+
+    if recently_posted:
+        reason = f"Skipped duplicate auto post. Minimum gap is {AUTO_POST_MIN_GAP_HOURS} hours."
+        log_skipped_post(post_type=post_type, reason=reason, source=source)
+        print(f"🛡️ Skipped {post_type}: {reason}")
+        return False
+
+    text, item_id = text_builder()
+
+    await context.bot.send_message(
+        chat_id=CHANNEL_ID,
+        text=text,
+        parse_mode="HTML",
+        disable_web_page_preview=True
+    )
+
+    log_channel_post(post_type=post_type, item_id=item_id, source=source)
+    return True
 
 
 # ================== الأوامر ==================
@@ -605,45 +724,48 @@ async def test_channel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def auto_publish_hadith(context: ContextTypes.DEFAULT_TYPE):
     try:
-        text, hid = hadith_channel_message()
-        await send_channel_message(
+        sent = await send_auto_channel_message(
             context=context,
-            text=text,
             post_type="hadith",
-            item_id=hid,
+            text_builder=hadith_channel_message,
             source="auto_hadith"
         )
-        print("✅ Scheduled hadith post sent.")
+
+        if sent:
+            print("✅ Scheduled hadith post sent.")
+
     except Exception as e:
         print(f"❌ Scheduled hadith post error: {e}")
 
 
 async def auto_publish_quran(context: ContextTypes.DEFAULT_TYPE):
     try:
-        text, ayah_ref = quran_channel_message()
-        await send_channel_message(
+        sent = await send_auto_channel_message(
             context=context,
-            text=text,
             post_type="quran",
-            item_id=ayah_ref,
+            text_builder=quran_channel_message,
             source="auto_quran"
         )
-        print("✅ Scheduled quran post sent.")
+
+        if sent:
+            print("✅ Scheduled quran post sent.")
+
     except Exception as e:
         print(f"❌ Scheduled quran post error: {e}")
 
 
 async def auto_publish_mixed(context: ContextTypes.DEFAULT_TYPE):
     try:
-        text, item_id = mixed_channel_message()
-        await send_channel_message(
+        sent = await send_auto_channel_message(
             context=context,
-            text=text,
             post_type="mixed",
-            item_id=item_id,
+            text_builder=mixed_channel_message,
             source="auto_mixed"
         )
-        print("✅ Scheduled mixed post sent.")
+
+        if sent:
+            print("✅ Scheduled mixed post sent.")
+
     except Exception as e:
         print(f"❌ Scheduled mixed post error: {e}")
 
@@ -872,6 +994,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         total_posts = channel_posts_count()
+        total_skipped = skipped_posts_count()
         hadith_posts = channel_posts_count_by_type("hadith")
         quran_posts = channel_posts_count_by_type("quran")
         mixed_posts = channel_posts_count_by_type("mixed")
@@ -904,6 +1027,8 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 ❤️ <b>عدد الأحاديث المحفوظة:</b> {saved_count()}
 
 📢 <b>إجمالي منشورات القناة:</b> {total_posts}
+🛡️ <b>محاولات تم تخطيها:</b> {total_skipped}
+
 🕊️ <b>منشورات الحديث:</b> {hadith_posts}
 📖 <b>منشورات القرآن:</b> {quran_posts}
 📩 <b>منشورات آية + حديث:</b> {mixed_posts}
@@ -917,6 +1042,8 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 • حديث: <code>{esc(HADITH_POST_TIME)}</code>
 • آية: <code>{esc(QURAN_POST_TIME)}</code>
 • آية + حديث: <code>{esc(MIXED_POST_TIME)}</code>
+
+🛡️ <b>حماية التكرار:</b> <code>{AUTO_POST_MIN_GAP_HOURS}h</code>
 
 🌐 <b>القناة:</b> {esc(CHANNEL_ID)}
 """,
@@ -943,6 +1070,60 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 text += f"\n⭐ <b>اقتراح حالي:</b> الساعة <b>{best_hour}:00</b> لأنها الأكثر استخدامًا في سجل النشر."
 
         await safe_edit(q, text, admin_back())
+
+    elif data == "admin_duplicate_status":
+        if not is_admin(user_id):
+            await q.answer("غير مسموح", show_alert=True)
+            return
+
+        status_lines = []
+        for post_type in ["hadith", "quran", "mixed"]:
+            recently_posted, last_post = was_auto_posted_recently(post_type, AUTO_POST_MIN_GAP_HOURS)
+
+            if last_post:
+                _, item_id, posted_at, hour, source = last_post
+                last_text = format_time_from_timestamp(posted_at)
+            else:
+                last_text = "لا يوجد نشر تلقائي سابق"
+
+            status = "🛑 محمي الآن من التكرار" if recently_posted else "✅ مسموح بالنشر التلقائي"
+
+            status_lines.append(
+                f"📌 <b>{esc(post_type)}</b>\n"
+                f"آخر نشر تلقائي: {esc(last_text)}\n"
+                f"الحالة: {status}\n"
+            )
+
+        last_skip = last_skipped_post()
+        if last_skip:
+            skip_type, reason, skipped_at, hour, source = last_skip
+            skip_text = (
+                f"\n🛡️ <b>آخر تخطي:</b>\n"
+                f"النوع: <code>{esc(skip_type)}</code>\n"
+                f"الوقت: {esc(format_time_from_timestamp(skipped_at))}\n"
+                f"السبب: {esc(reason)}\n"
+            )
+        else:
+            skip_text = "\n🛡️ <b>آخر تخطي:</b> لا يوجد"
+
+        await safe_edit(
+            q,
+            f"""🛡️ <b>حالة الحماية من التكرار</b>
+
+مدة الحماية الحالية:
+<code>{AUTO_POST_MIN_GAP_HOURS} ساعات</code>
+
+{line().join(status_lines)}
+
+📊 <b>عدد التخطيات:</b>
+• حديث: {skipped_posts_count_by_type("hadith")}
+• آية: {skipped_posts_count_by_type("quran")}
+• آية + حديث: {skipped_posts_count_by_type("mixed")}
+
+{skip_text}
+""",
+            admin_back()
+        )
 
     elif data == "admin_custom_post":
         if not is_admin(user_id):
@@ -1022,10 +1203,11 @@ def main():
         time=mixed_time
     )
 
-    print("Bot running with configurable schedule...")
+    print("Bot running with duplicate protection...")
     print(f"Hadith post time: {HADITH_POST_TIME}")
     print(f"Quran post time: {QURAN_POST_TIME}")
     print(f"Mixed post time: {MIXED_POST_TIME}")
+    print(f"Auto post min gap: {AUTO_POST_MIN_GAP_HOURS} hours")
 
     app.run_polling()
 
