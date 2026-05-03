@@ -49,6 +49,12 @@ def is_admin(user_id):
     return user_id == ADMIN_ID
 
 
+def format_time_from_timestamp(ts):
+    if not ts:
+        return "غير متوفر"
+    return datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+
+
 # ================== قاعدة البيانات ==================
 
 def init_db():
@@ -75,7 +81,7 @@ def init_db():
     CREATE TABLE IF NOT EXISTS channel_posts(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         post_type TEXT NOT NULL,
-        hadith_id TEXT,
+        item_id TEXT,
         posted_at INTEGER NOT NULL,
         hour INTEGER NOT NULL,
         source TEXT DEFAULT 'bot'
@@ -138,7 +144,7 @@ def get_saved_hadiths(user_id, limit=5):
     return rows
 
 
-def log_channel_post(post_type="hadith", hadith_id=None, source="bot"):
+def log_channel_post(post_type="hadith", item_id=None, source="bot"):
     ts = now_timestamp()
     hour = datetime.datetime.now().hour
 
@@ -146,10 +152,10 @@ def log_channel_post(post_type="hadith", hadith_id=None, source="bot"):
     c = conn.cursor()
     c.execute(
         """
-        INSERT INTO channel_posts(post_type, hadith_id, posted_at, hour, source)
+        INSERT INTO channel_posts(post_type, item_id, posted_at, hour, source)
         VALUES (?, ?, ?, ?, ?)
         """,
-        (post_type, str(hadith_id or ""), ts, hour, source)
+        (post_type, str(item_id or ""), ts, hour, source)
     )
     conn.commit()
     conn.close()
@@ -164,11 +170,20 @@ def channel_posts_count():
     return count
 
 
+def channel_posts_count_by_type(post_type):
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM channel_posts WHERE post_type=?", (post_type,))
+    count = c.fetchone()[0]
+    conn.close()
+    return count
+
+
 def last_channel_post():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
     c.execute("""
-        SELECT post_type, hadith_id, posted_at, hour, source
+        SELECT post_type, item_id, posted_at, hour, source
         FROM channel_posts
         ORDER BY posted_at DESC
         LIMIT 1
@@ -199,12 +214,6 @@ def best_posting_hour():
 
     best = max(rows, key=lambda x: x[1])
     return best
-
-
-def format_time_from_timestamp(ts):
-    if not ts:
-        return "غير متوفر"
-    return datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
 
 
 # ================== HadeethEnc API ==================
@@ -273,7 +282,7 @@ def random_hadith(lang="ar"):
         return f"❌ خطأ في جلب الحديث:\n<code>{esc(e)}</code>"
 
 
-def channel_message():
+def hadith_channel_message():
     try:
         hid = get_random_hadith_id()
 
@@ -284,7 +293,7 @@ def channel_message():
         en = get_hadith_by_id(hid, "en")
         de = get_hadith_by_id(hid, "de")
 
-        text = f"""📩 <b>رسالة اليوم | Daily Message | Tägliche Nachricht</b>
+        text = f"""📩 <b>حديث اليوم | Hadith of the Day | Hadith des Tages</b>
 
 🕊️ <b>نفس الحديث بثلاث لغات</b>
 <i>Same Hadith in Three Languages</i>
@@ -318,7 +327,100 @@ def channel_message():
         return text, hid
 
     except Exception as e:
-        return f"❌ خطأ في بناء رسالة القناة:\n<code>{esc(e)}</code>", None
+        return f"❌ خطأ في بناء رسالة الحديث:\n<code>{esc(e)}</code>", None
+
+
+# ================== Quran API ==================
+
+def get_random_ayah_number():
+    return random.randint(1, 6236)
+
+
+def get_ayah_by_number(number, edition):
+    response = requests.get(
+        f"{QURAN_API}/ayah/{number}/{edition}",
+        timeout=15
+    )
+    response.raise_for_status()
+
+    data = response.json()["data"]
+
+    return {
+        "text": data.get("text", ""),
+        "surah_name": data.get("surah", {}).get("name", ""),
+        "surah_english": data.get("surah", {}).get("englishName", ""),
+        "surah_number": data.get("surah", {}).get("number", ""),
+        "ayah_number": data.get("numberInSurah", ""),
+        "global_number": data.get("number", number),
+        "edition": data.get("edition", {}).get("englishName", edition)
+    }
+
+
+def quran_channel_message():
+    try:
+        number = get_random_ayah_number()
+
+        ar = get_ayah_by_number(number, "quran-uthmani")
+        en = get_ayah_by_number(number, "en.sahih")
+        de = get_ayah_by_number(number, "de.aburida")
+
+        surah_label = f"{ar['surah_name']} | {en['surah_english']}"
+        ayah_ref = f"{ar['surah_number']}:{ar['ayah_number']}"
+
+        text = f"""📖 <b>آية اليوم | Ayah of the Day | Vers des Tages</b>
+
+━━━━━━━━━━━━━━
+
+🇸🇦 <b>العربية</b>
+
+{esc(ar["text"])}
+
+━━━━━━━━━━━━━━
+
+🇬🇧 <b>English</b>
+
+{esc(en["text"])}
+
+━━━━━━━━━━━━━━
+
+🇩🇪 <b>Deutsch</b>
+
+{esc(de["text"])}
+
+━━━━━━━━━━━━━━
+
+📖 <b>السورة:</b> {esc(surah_label)}
+🔢 <b>الآية:</b> <code>{esc(ayah_ref)}</code>
+🌐 <b>المصدر التقني:</b> AlQuran Cloud API
+
+🌍 {esc(CHANNEL_ID)}
+"""
+        return text, ayah_ref
+
+    except Exception as e:
+        return f"❌ خطأ في بناء رسالة الآية:\n<code>{esc(e)}</code>", None
+
+
+def mixed_channel_message():
+    try:
+        quran_text, ayah_ref = quran_channel_message()
+        hadith_text, hid = hadith_channel_message()
+
+        text = f"""📩 <b>رسالة إيمانية | Faith Reminder</b>
+
+━━━━━━━━━━━━━━
+
+{quran_text}
+
+━━━━━━━━━━━━━━
+
+{hadith_text}
+"""
+        item_id = f"ayah:{ayah_ref}|hadith:{hid}"
+        return text, item_id
+
+    except Exception as e:
+        return f"❌ خطأ في بناء الرسالة المختلطة:\n<code>{esc(e)}</code>", None
 
 
 # ================== القوائم ==================
@@ -348,8 +450,11 @@ def hadith_menu():
 
 def admin_menu():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("📢 نشر حديث في القناة الآن", callback_data="admin_post_channel")],
-        [InlineKeyboardButton("👀 معاينة رسالة القناة", callback_data="admin_preview_channel")],
+        [InlineKeyboardButton("🕊️ نشر حديث الآن", callback_data="admin_post_hadith")],
+        [InlineKeyboardButton("📖 نشر آية الآن", callback_data="admin_post_quran")],
+        [InlineKeyboardButton("📩 نشر آية + حديث", callback_data="admin_post_mixed")],
+        [InlineKeyboardButton("👀 معاينة حديث", callback_data="admin_preview_hadith")],
+        [InlineKeyboardButton("👀 معاينة آية", callback_data="admin_preview_quran")],
         [InlineKeyboardButton("📊 لوحة الإحصائيات", callback_data="admin_stats")],
         [InlineKeyboardButton("🕒 إحصائيات أوقات النشر", callback_data="admin_time_stats")],
         [InlineKeyboardButton("✍️ إرسال رسالة مخصصة للقناة", callback_data="admin_custom_post")],
@@ -389,6 +494,16 @@ async def safe_edit(q, text, markup=None):
         )
 
 
+async def send_channel_message(context, text, post_type, item_id, source):
+    await context.bot.send_message(
+        chat_id=CHANNEL_ID,
+        text=text,
+        parse_mode="HTML",
+        disable_web_page_preview=True
+    )
+    log_channel_post(post_type=post_type, item_id=item_id, source=source)
+
+
 # ================== الأوامر ==================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -425,39 +540,64 @@ async def test_channel(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ هذا الأمر خاص بالمشرف فقط.")
         return
 
-    text, hid = channel_message()
+    text, hid = hadith_channel_message()
 
-    await context.bot.send_message(
-        chat_id=CHANNEL_ID,
+    await send_channel_message(
+        context=context,
         text=text,
-        parse_mode="HTML",
-        disable_web_page_preview=True
+        post_type="hadith",
+        item_id=hid,
+        source="test_command"
     )
-
-    log_channel_post(post_type="hadith", hadith_id=hid, source="test_command")
 
     await update.message.reply_text("✅ تم نشر رسالة اختبار في القناة.")
 
 
 # ================== النشر التلقائي ==================
 
-async def auto_publish_channel(context: ContextTypes.DEFAULT_TYPE):
+async def auto_publish_hadith(context: ContextTypes.DEFAULT_TYPE):
     try:
-        text, hid = channel_message()
-
-        await context.bot.send_message(
-            chat_id=CHANNEL_ID,
+        text, hid = hadith_channel_message()
+        await send_channel_message(
+            context=context,
             text=text,
-            parse_mode="HTML",
-            disable_web_page_preview=True
+            post_type="hadith",
+            item_id=hid,
+            source="auto_09_hadith"
         )
-
-        log_channel_post(post_type="hadith", hadith_id=hid, source="auto_schedule")
-
-        print("✅ Daily channel post sent.")
-
+        print("✅ Daily hadith post sent.")
     except Exception as e:
-        print(f"❌ Daily channel post error: {e}")
+        print(f"❌ Daily hadith post error: {e}")
+
+
+async def auto_publish_quran(context: ContextTypes.DEFAULT_TYPE):
+    try:
+        text, ayah_ref = quran_channel_message()
+        await send_channel_message(
+            context=context,
+            text=text,
+            post_type="quran",
+            item_id=ayah_ref,
+            source="auto_15_quran"
+        )
+        print("✅ Daily quran post sent.")
+    except Exception as e:
+        print(f"❌ Daily quran post error: {e}")
+
+
+async def auto_publish_mixed(context: ContextTypes.DEFAULT_TYPE):
+    try:
+        text, item_id = mixed_channel_message()
+        await send_channel_message(
+            context=context,
+            text=text,
+            post_type="mixed",
+            item_id=item_id,
+            source="auto_21_mixed"
+        )
+        print("✅ Daily mixed post sent.")
+    except Exception as e:
+        print(f"❌ Daily mixed post error: {e}")
 
 
 # ================== Callback Handler ==================
@@ -564,21 +704,42 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             admin_menu()
         )
 
-    elif data == "admin_preview_channel":
+    elif data == "admin_preview_hadith":
         if not is_admin(user_id):
             await q.answer("غير مسموح", show_alert=True)
             return
 
-        text, hid = channel_message()
+        text, hid = hadith_channel_message()
         context.user_data["admin_preview"] = text
-        context.user_data["admin_preview_hid"] = hid
+        context.user_data["admin_preview_type"] = "hadith"
+        context.user_data["admin_preview_id"] = hid
 
         await safe_edit(
             q,
-            "👀 <b>معاينة رسالة القناة:</b>\n\n" + text,
+            "👀 <b>معاينة الحديث:</b>\n\n" + text,
             InlineKeyboardMarkup([
                 [InlineKeyboardButton("📢 نشر هذه الرسالة", callback_data="admin_publish_preview")],
-                [InlineKeyboardButton("🔄 معاينة أخرى", callback_data="admin_preview_channel")],
+                [InlineKeyboardButton("🔄 معاينة أخرى", callback_data="admin_preview_hadith")],
+                [InlineKeyboardButton("⬅️ رجوع للوحة الإدارة", callback_data="admin")]
+            ])
+        )
+
+    elif data == "admin_preview_quran":
+        if not is_admin(user_id):
+            await q.answer("غير مسموح", show_alert=True)
+            return
+
+        text, ayah_ref = quran_channel_message()
+        context.user_data["admin_preview"] = text
+        context.user_data["admin_preview_type"] = "quran"
+        context.user_data["admin_preview_id"] = ayah_ref
+
+        await safe_edit(
+            q,
+            "👀 <b>معاينة الآية:</b>\n\n" + text,
+            InlineKeyboardMarkup([
+                [InlineKeyboardButton("📢 نشر هذه الرسالة", callback_data="admin_publish_preview")],
+                [InlineKeyboardButton("🔄 معاينة أخرى", callback_data="admin_preview_quran")],
                 [InlineKeyboardButton("⬅️ رجوع للوحة الإدارة", callback_data="admin")]
             ])
         )
@@ -589,43 +750,73 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         text = context.user_data.get("admin_preview")
-        hid = context.user_data.get("admin_preview_hid")
+        post_type = context.user_data.get("admin_preview_type", "unknown")
+        item_id = context.user_data.get("admin_preview_id", "")
 
         if not text:
-            text, hid = channel_message()
+            text, item_id = hadith_channel_message()
+            post_type = "hadith"
 
-        await context.bot.send_message(
-            chat_id=CHANNEL_ID,
+        await send_channel_message(
+            context=context,
             text=text,
-            parse_mode="HTML",
-            disable_web_page_preview=True
+            post_type=post_type,
+            item_id=item_id,
+            source="admin_preview"
         )
-
-        log_channel_post(post_type="hadith", hadith_id=hid, source="admin_preview")
 
         await q.answer("تم النشر في القناة ✅", show_alert=True)
 
-    elif data == "admin_post_channel":
+    elif data == "admin_post_hadith":
         if not is_admin(user_id):
             await q.answer("غير مسموح", show_alert=True)
             return
 
-        text, hid = channel_message()
+        text, hid = hadith_channel_message()
 
-        await context.bot.send_message(
-            chat_id=CHANNEL_ID,
+        await send_channel_message(
+            context=context,
             text=text,
-            parse_mode="HTML",
-            disable_web_page_preview=True
+            post_type="hadith",
+            item_id=hid,
+            source="admin_manual_hadith"
         )
 
-        log_channel_post(post_type="hadith", hadith_id=hid, source="admin_manual")
+        await safe_edit(q, "✅ <b>تم نشر حديث في القناة.</b>", admin_menu())
 
-        await safe_edit(
-            q,
-            "✅ <b>تم نشر حديث في القناة.</b>",
-            admin_menu()
+    elif data == "admin_post_quran":
+        if not is_admin(user_id):
+            await q.answer("غير مسموح", show_alert=True)
+            return
+
+        text, ayah_ref = quran_channel_message()
+
+        await send_channel_message(
+            context=context,
+            text=text,
+            post_type="quran",
+            item_id=ayah_ref,
+            source="admin_manual_quran"
         )
+
+        await safe_edit(q, "✅ <b>تم نشر آية في القناة.</b>", admin_menu())
+
+    elif data == "admin_post_mixed":
+        if not is_admin(user_id):
+            await q.answer("غير مسموح", show_alert=True)
+            return
+
+        text, item_id = mixed_channel_message()
+
+        await send_channel_message(
+            context=context,
+            text=text,
+            post_type="mixed",
+            item_id=item_id,
+            source="admin_manual_mixed"
+        )
+
+        await safe_edit(q, "✅ <b>تم نشر آية + حديث في القناة.</b>", admin_menu())
 
     elif data == "admin_stats":
         if not is_admin(user_id):
@@ -633,13 +824,18 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         total_posts = channel_posts_count()
+        hadith_posts = channel_posts_count_by_type("hadith")
+        quran_posts = channel_posts_count_by_type("quran")
+        mixed_posts = channel_posts_count_by_type("mixed")
+        custom_posts = channel_posts_count_by_type("custom")
         last_post = last_channel_post()
 
         if last_post:
-            post_type, hadith_id, posted_at, hour, source = last_post
+            post_type, item_id, posted_at, hour, source = last_post
             last_post_text = (
                 f"🕒 <b>آخر نشر:</b> {esc(format_time_from_timestamp(posted_at))}\n"
-                f"🔢 <b>آخر حديث ID:</b> <code>{esc(hadith_id)}</code>\n"
+                f"📌 <b>نوع آخر منشور:</b> {esc(post_type)}\n"
+                f"🔢 <b>Item ID:</b> <code>{esc(item_id)}</code>\n"
                 f"⚙️ <b>طريقة النشر:</b> {esc(source)}"
             )
         else:
@@ -658,7 +854,12 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 👥 <b>عدد المستخدمين:</b> {users_count()}
 ❤️ <b>عدد الأحاديث المحفوظة:</b> {saved_count()}
-📢 <b>عدد منشورات القناة:</b> {total_posts}
+
+📢 <b>إجمالي منشورات القناة:</b> {total_posts}
+🕊️ <b>منشورات الحديث:</b> {hadith_posts}
+📖 <b>منشورات القرآن:</b> {quran_posts}
+📩 <b>منشورات آية + حديث:</b> {mixed_posts}
+✍️ <b>منشورات مخصصة:</b> {custom_posts}
 
 {last_post_text}
 
@@ -724,7 +925,7 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             disable_web_page_preview=True
         )
 
-        log_channel_post(post_type="custom", hadith_id="", source="admin_custom")
+        log_channel_post(post_type="custom", item_id="", source="admin_custom")
 
         await update.message.reply_text(
             "✅ تم نشر الرسالة المخصصة في القناة.",
@@ -749,19 +950,22 @@ def main():
     app.add_handler(CallbackQueryHandler(handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
 
-    publish_times = [
-        datetime.time(hour=9, minute=0, second=0),
-        datetime.time(hour=15, minute=0, second=0),
-        datetime.time(hour=21, minute=0, second=0),
-    ]
+    app.job_queue.run_daily(
+        auto_publish_hadith,
+        time=datetime.time(hour=9, minute=0, second=0)
+    )
 
-    for publish_time in publish_times:
-        app.job_queue.run_daily(
-            auto_publish_channel,
-            time=publish_time
-        )
+    app.job_queue.run_daily(
+        auto_publish_quran,
+        time=datetime.time(hour=15, minute=0, second=0)
+    )
 
-    print("Bot running with advanced admin dashboard...")
+    app.job_queue.run_daily(
+        auto_publish_mixed,
+        time=datetime.time(hour=21, minute=0, second=0)
+    )
+
+    print("Bot running with Quran + Hadith daily posts...")
     app.run_polling()
 
 
