@@ -24,12 +24,225 @@ ADMIN_ID = int(os.environ.get("ADMIN_ID", "0"))
 HADITH_POST_TIME = os.environ.get("HADITH_POST_TIME", "09:00")
 QURAN_POST_TIME = os.environ.get("QURAN_POST_TIME", "15:00")
 MIXED_POST_TIME = os.environ.get("MIXED_POST_TIME", "21:00")
+
+MORNING_ADHKAR_TIME = os.environ.get("MORNING_ADHKAR_TIME", "06:00")
+EVENING_ADHKAR_TIME = os.environ.get("EVENING_ADHKAR_TIME", "18:00")
+
 AUTO_POST_MIN_GAP_HOURS = int(os.environ.get("AUTO_POST_MIN_GAP_HOURS", "6"))
 
 QURAN_API = "https://api.alquran.cloud/v1"
 HADEETH_API = "https://hadeethenc.com/api/v1/hadeeths/one/"
 LIST_API = "https://hadeethenc.com/api/v1/hadeeths/list/"
 DB = "bot.db"
+
+
+# ================== الأذكار ==================
+
+MORNING_ADHKAR = [
+    {
+        "text": "أَصْـبَحْنا وَأَصْـبَحَ المُـلْكُ لله، والحَمْدُ لله، لا إلهَ إلاّ اللهُ وحدَهُ لا شريكَ له، لهُ المُـلْكُ ولهُ الحَمْـد، وهوَ على كلّ شيءٍ قدير.",
+        "repeat": "مرة واحدة",
+        "source": "من أذكار الصباح"
+    },
+    {
+        "text": "اللّهـمَّ بِكَ أَصْـبَحْنا، وَبِكَ أَمْسَيْـنا، وَبِكَ نَحْـيا، وَبِكَ نَمـوتُ، وَإِلَيْكَ النُّـشور.",
+        "repeat": "مرة واحدة",
+        "source": "من أذكار الصباح"
+    },
+    {
+        "text": "اللّهـمَّ أَنْتَ رَبِّـي لا إلهَ إلاّ أَنْتَ، خَلَقْتَنـي وأنا عَبْـدُك، وأنا على عَهْـدِكَ ووَعْـدِكَ ما استطعتُ، أعوذُ بكَ مِنْ شَرِّ ما صَنَعْت، أبوءُ لكَ بنِعْمَتِكَ عليَّ، وأبوءُ بذَنْـبي، فاغْفِـرْ لي، فإنّهُ لا يَغْفِـرُ الذُّنوبَ إلاّ أنت.",
+        "repeat": "مرة واحدة",
+        "source": "سيد الاستغفار"
+    },
+    {
+        "text": "رَضيتُ باللهِ ربًّا، وبالإسلامِ دينًا، وبمحمّدٍ ﷺ نبيًّا.",
+        "repeat": "ثلاث مرات",
+        "source": "من أذكار الصباح والمساء"
+    },
+    {
+        "text": "اللّهـمَّ إنّي أَصْبَحْتُ أُشْهِدُكَ، وأُشْهِدُ حَمَلَةَ عَرْشِكَ، ومَلائِكَتَكَ، وجميعَ خَلْقِكَ، أنّكَ أنتَ اللهُ لا إلهَ إلاّ أنتَ وحدَكَ لا شريكَ لك، وأنّ محمّدًا عبدُكَ ورسولُك.",
+        "repeat": "أربع مرات",
+        "source": "من أذكار الصباح"
+    },
+    {
+        "text": "اللّهـمَّ ما أَصْبَحَ بي مِنْ نِعْمَةٍ أو بأَحَدٍ مِنْ خَلْقِكَ، فَمِنْكَ وحدَكَ لا شريكَ لك، فَلَكَ الحمدُ ولكَ الشُّكر.",
+        "repeat": "مرة واحدة",
+        "source": "من أذكار الصباح"
+    },
+    {
+        "text": "حَسْبِيَ اللهُ لا إلهَ إلاّ هو، عليهِ توكّلتُ، وهوَ ربُّ العرشِ العظيم.",
+        "repeat": "سبع مرات",
+        "source": "من أذكار الصباح والمساء"
+    },
+    {
+        "text": "بِسْمِ اللهِ الذي لا يَضُرُّ مع اسمِهِ شيءٌ في الأرضِ ولا في السماءِ، وهوَ السميعُ العليم.",
+        "repeat": "ثلاث مرات",
+        "source": "من أذكار الصباح والمساء"
+    },
+    {
+        "text": "اللّهـمَّ عافِني في بَدَني، اللّهـمَّ عافِني في سَمْعي، اللّهـمَّ عافِني في بَصَري، لا إلهَ إلاّ أنت.",
+        "repeat": "ثلاث مرات",
+        "source": "من أذكار الصباح والمساء"
+    },
+    {
+        "text": "اللّهـمَّ إنّي أعوذُ بكَ مِنَ الكُفْرِ والفَقْر، وأعوذُ بكَ مِنْ عذابِ القَبْر، لا إلهَ إلاّ أنت.",
+        "repeat": "ثلاث مرات",
+        "source": "من أذكار الصباح والمساء"
+    },
+    {
+        "text": "اللّهـمَّ إنّي أسألُكَ العفوَ والعافيةَ في الدنيا والآخرة.",
+        "repeat": "مرة واحدة",
+        "source": "من أذكار الصباح والمساء"
+    },
+    {
+        "text": "اللّهـمَّ إنّي أسألُكَ العفوَ والعافيةَ في ديني ودنيايَ وأهلي ومالي.",
+        "repeat": "مرة واحدة",
+        "source": "من أذكار الصباح والمساء"
+    },
+    {
+        "text": "اللّهـمَّ استُرْ عوراتي، وآمِنْ رَوْعاتي.",
+        "repeat": "مرة واحدة",
+        "source": "من أذكار الصباح والمساء"
+    },
+    {
+        "text": "اللّهـمَّ احفظني مِنْ بينِ يديَّ، ومِنْ خَلْفي، وعن يميني، وعن شمالي، ومِنْ فوقي، وأعوذُ بعظمتِكَ أن أُغتالَ مِنْ تحتي.",
+        "repeat": "مرة واحدة",
+        "source": "من أذكار الصباح والمساء"
+    },
+    {
+        "text": "يا حيُّ يا قيّومُ، برحمتِكَ أستغيث، أصلِحْ لي شأني كلَّه، ولا تَكِلْني إلى نفسي طَرْفَةَ عين.",
+        "repeat": "مرة واحدة",
+        "source": "من أذكار الصباح والمساء"
+    },
+    {
+        "text": "أَصْبَحْنا على فِطْرَةِ الإسلام، وعلى كلمةِ الإخلاص، وعلى دينِ نبيّنا محمدٍ ﷺ، وعلى مِلّةِ أبينا إبراهيمَ حنيفًا مسلمًا وما كانَ مِنَ المشركين.",
+        "repeat": "مرة واحدة",
+        "source": "من أذكار الصباح"
+    },
+    {
+        "text": "سُبْحانَ اللهِ وبحمدِه.",
+        "repeat": "مائة مرة",
+        "source": "من أذكار الصباح والمساء"
+    },
+    {
+        "text": "لا إلهَ إلاّ اللهُ وحدَهُ لا شريكَ له، لهُ الملكُ ولهُ الحمدُ، وهوَ على كلّ شيءٍ قدير.",
+        "repeat": "عشر مرات أو مائة مرة",
+        "source": "من أذكار الصباح والمساء"
+    },
+    {
+        "text": "أستغفرُ اللهَ وأتوبُ إليه.",
+        "repeat": "مائة مرة",
+        "source": "من الأذكار"
+    },
+    {
+        "text": "اللّهـمَّ صلِّ وسلّمْ على نبيّنا محمد.",
+        "repeat": "عشر مرات",
+        "source": "من الأذكار المشروعة"
+    },
+]
+
+EVENING_ADHKAR = [
+    {
+        "text": "أَمْسَيْنا وأَمْسَى المُـلْكُ لله، والحَمْدُ لله، لا إلهَ إلاّ اللهُ وحدَهُ لا شريكَ له، لهُ المُـلْكُ ولهُ الحَمْـد، وهوَ على كلّ شيءٍ قدير.",
+        "repeat": "مرة واحدة",
+        "source": "من أذكار المساء"
+    },
+    {
+        "text": "اللّهـمَّ بِكَ أَمْسَيْنا، وبِكَ أَصْبَحْنا، وبِكَ نَحْيا، وبِكَ نَموتُ، وإليكَ المصير.",
+        "repeat": "مرة واحدة",
+        "source": "من أذكار المساء"
+    },
+    {
+        "text": "اللّهـمَّ أَنْتَ رَبِّـي لا إلهَ إلاّ أَنْتَ، خَلَقْتَنـي وأنا عَبْـدُك، وأنا على عَهْـدِكَ ووَعْـدِكَ ما استطعتُ، أعوذُ بكَ مِنْ شَرِّ ما صَنَعْت، أبوءُ لكَ بنِعْمَتِكَ عليَّ، وأبوءُ بذَنْـبي، فاغْفِـرْ لي، فإنّهُ لا يَغْفِـرُ الذُّنوبَ إلاّ أنت.",
+        "repeat": "مرة واحدة",
+        "source": "سيد الاستغفار"
+    },
+    {
+        "text": "رَضيتُ باللهِ ربًّا، وبالإسلامِ دينًا، وبمحمّدٍ ﷺ نبيًّا.",
+        "repeat": "ثلاث مرات",
+        "source": "من أذكار الصباح والمساء"
+    },
+    {
+        "text": "اللّهـمَّ إنّي أَمْسَيْتُ أُشْهِدُكَ، وأُشْهِدُ حَمَلَةَ عَرْشِكَ، ومَلائِكَتَكَ، وجميعَ خَلْقِكَ، أنّكَ أنتَ اللهُ لا إلهَ إلاّ أنتَ وحدَكَ لا شريكَ لك، وأنّ محمّدًا عبدُكَ ورسولُك.",
+        "repeat": "أربع مرات",
+        "source": "من أذكار المساء"
+    },
+    {
+        "text": "اللّهـمَّ ما أَمْسَى بي مِنْ نِعْمَةٍ أو بأَحَدٍ مِنْ خَلْقِكَ، فَمِنْكَ وحدَكَ لا شريكَ لك، فَلَكَ الحمدُ ولكَ الشُّكر.",
+        "repeat": "مرة واحدة",
+        "source": "من أذكار المساء"
+    },
+    {
+        "text": "حَسْبِيَ اللهُ لا إلهَ إلاّ هو، عليهِ توكّلتُ، وهوَ ربُّ العرشِ العظيم.",
+        "repeat": "سبع مرات",
+        "source": "من أذكار الصباح والمساء"
+    },
+    {
+        "text": "بِسْمِ اللهِ الذي لا يَضُرُّ مع اسمِهِ شيءٌ في الأرضِ ولا في السماءِ، وهوَ السميعُ العليم.",
+        "repeat": "ثلاث مرات",
+        "source": "من أذكار الصباح والمساء"
+    },
+    {
+        "text": "اللّهـمَّ عافِني في بَدَني، اللّهـمَّ عافِني في سَمْعي، اللّهـمَّ عافِني في بَصَري، لا إلهَ إلاّ أنت.",
+        "repeat": "ثلاث مرات",
+        "source": "من أذكار الصباح والمساء"
+    },
+    {
+        "text": "اللّهـمَّ إنّي أعوذُ بكَ مِنَ الكُفْرِ والفَقْر، وأعوذُ بكَ مِنْ عذابِ القَبْر، لا إلهَ إلاّ أنت.",
+        "repeat": "ثلاث مرات",
+        "source": "من أذكار الصباح والمساء"
+    },
+    {
+        "text": "اللّهـمَّ إنّي أسألُكَ العفوَ والعافيةَ في الدنيا والآخرة.",
+        "repeat": "مرة واحدة",
+        "source": "من أذكار الصباح والمساء"
+    },
+    {
+        "text": "اللّهـمَّ إنّي أسألُكَ العفوَ والعافيةَ في ديني ودنيايَ وأهلي ومالي.",
+        "repeat": "مرة واحدة",
+        "source": "من أذكار الصباح والمساء"
+    },
+    {
+        "text": "اللّهـمَّ استُرْ عوراتي، وآمِنْ رَوْعاتي.",
+        "repeat": "مرة واحدة",
+        "source": "من أذكار الصباح والمساء"
+    },
+    {
+        "text": "اللّهـمَّ احفظني مِنْ بينِ يديَّ، ومِنْ خَلْفي، وعن يميني، وعن شمالي، ومِنْ فوقي، وأعوذُ بعظمتِكَ أن أُغتالَ مِنْ تحتي.",
+        "repeat": "مرة واحدة",
+        "source": "من أذكار الصباح والمساء"
+    },
+    {
+        "text": "يا حيُّ يا قيّومُ، برحمتِكَ أستغيث، أصلِحْ لي شأني كلَّه، ولا تَكِلْني إلى نفسي طَرْفَةَ عين.",
+        "repeat": "مرة واحدة",
+        "source": "من أذكار الصباح والمساء"
+    },
+    {
+        "text": "أَمْسَيْنا على فِطْرَةِ الإسلام، وعلى كلمةِ الإخلاص، وعلى دينِ نبيّنا محمدٍ ﷺ، وعلى مِلّةِ أبينا إبراهيمَ حنيفًا مسلمًا وما كانَ مِنَ المشركين.",
+        "repeat": "مرة واحدة",
+        "source": "من أذكار المساء"
+    },
+    {
+        "text": "سُبْحانَ اللهِ وبحمدِه.",
+        "repeat": "مائة مرة",
+        "source": "من أذكار الصباح والمساء"
+    },
+    {
+        "text": "لا إلهَ إلاّ اللهُ وحدَهُ لا شريكَ له، لهُ الملكُ ولهُ الحمدُ، وهوَ على كلّ شيءٍ قدير.",
+        "repeat": "عشر مرات أو مائة مرة",
+        "source": "من أذكار الصباح والمساء"
+    },
+    {
+        "text": "أستغفرُ اللهَ وأتوبُ إليه.",
+        "repeat": "مائة مرة",
+        "source": "من الأذكار"
+    },
+    {
+        "text": "اللّهـمَّ صلِّ وسلّمْ على نبيّنا محمد.",
+        "repeat": "عشر مرات",
+        "source": "من الأذكار المشروعة"
+    },
+]
 
 
 # ================== أدوات عامة ==================
@@ -44,10 +257,6 @@ def line():
 
 def now_timestamp():
     return int(time.time())
-
-
-def now_readable():
-    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
 def is_admin(user_id):
@@ -128,25 +337,15 @@ def init_db():
     )
     """)
 
-    # Migrations للنسخ القديمة
-    c.execute("PRAGMA table_info(saved)")
-    saved_columns = [row[1] for row in c.fetchall()]
-    if "created_at" not in saved_columns:
-        c.execute("ALTER TABLE saved ADD COLUMN created_at INTEGER DEFAULT 0")
-
-    c.execute("PRAGMA table_info(users)")
-    users_columns = [row[1] for row in c.fetchall()]
-    if "created_at" not in users_columns:
-        c.execute("ALTER TABLE users ADD COLUMN created_at INTEGER DEFAULT 0")
-
-    c.execute("PRAGMA table_info(channel_posts)")
-    post_columns = [row[1] for row in c.fetchall()]
-    if "item_id" not in post_columns:
-        c.execute("ALTER TABLE channel_posts ADD COLUMN item_id TEXT")
-    if "source" not in post_columns:
-        c.execute("ALTER TABLE channel_posts ADD COLUMN source TEXT DEFAULT 'bot'")
-    if "hour" not in post_columns:
-        c.execute("ALTER TABLE channel_posts ADD COLUMN hour INTEGER DEFAULT 0")
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS adhkar_reminders(
+        user_id INTEGER PRIMARY KEY,
+        chat_id INTEGER NOT NULL,
+        morning INTEGER DEFAULT 0,
+        evening INTEGER DEFAULT 0,
+        created_at INTEGER DEFAULT 0
+    )
+    """)
 
     conn.commit()
     conn.close()
@@ -199,6 +398,60 @@ def get_saved_hadiths(user_id, limit=5):
         "SELECT text, created_at FROM saved WHERE user_id=? ORDER BY created_at DESC LIMIT ?",
         (user_id, limit)
     )
+    rows = c.fetchall()
+    conn.close()
+    return rows
+
+
+def set_adhkar_reminder(user_id, chat_id, kind, enabled):
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    c.execute("""
+        INSERT OR IGNORE INTO adhkar_reminders(user_id, chat_id, morning, evening, created_at)
+        VALUES (?, ?, 0, 0, ?)
+    """, (user_id, chat_id, now_timestamp()))
+
+    if kind == "morning":
+        c.execute(
+            "UPDATE adhkar_reminders SET morning=?, chat_id=? WHERE user_id=?",
+            (1 if enabled else 0, chat_id, user_id)
+        )
+    elif kind == "evening":
+        c.execute(
+            "UPDATE adhkar_reminders SET evening=?, chat_id=? WHERE user_id=?",
+            (1 if enabled else 0, chat_id, user_id)
+        )
+
+    conn.commit()
+    conn.close()
+
+
+def get_adhkar_reminder_status(user_id):
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute(
+        "SELECT morning, evening FROM adhkar_reminders WHERE user_id=?",
+        (user_id,)
+    )
+    row = c.fetchone()
+    conn.close()
+
+    if not row:
+        return 0, 0
+
+    return row[0], row[1]
+
+
+def get_adhkar_subscribers(kind):
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    if kind == "morning":
+        c.execute("SELECT user_id, chat_id FROM adhkar_reminders WHERE morning=1")
+    else:
+        c.execute("SELECT user_id, chat_id FROM adhkar_reminders WHERE evening=1")
+
     rows = c.fetchall()
     conn.close()
     return rows
@@ -265,43 +518,6 @@ def channel_posts_count_by_type(post_type):
     return count
 
 
-def skipped_posts_count_by_type(post_type):
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("SELECT COUNT(*) FROM skipped_posts WHERE post_type=?", (post_type,))
-    count = c.fetchone()[0]
-    conn.close()
-    return count
-
-
-def last_channel_post():
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("""
-        SELECT post_type, item_id, posted_at, hour, source
-        FROM channel_posts
-        ORDER BY posted_at DESC
-        LIMIT 1
-    """)
-    row = c.fetchone()
-    conn.close()
-    return row
-
-
-def last_skipped_post():
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("""
-        SELECT post_type, reason, skipped_at, hour, source
-        FROM skipped_posts
-        ORDER BY skipped_at DESC
-        LIMIT 1
-    """)
-    row = c.fetchone()
-    conn.close()
-    return row
-
-
 def last_auto_post_by_type(post_type):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -332,29 +548,6 @@ def was_auto_posted_recently(post_type, min_gap_hours):
         return True, last_post
 
     return False, last_post
-
-
-def posts_by_hour():
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("""
-        SELECT hour, COUNT(*)
-        FROM channel_posts
-        GROUP BY hour
-        ORDER BY hour ASC
-    """)
-    rows = c.fetchall()
-    conn.close()
-    return rows
-
-
-def best_posting_hour():
-    rows = posts_by_hour()
-    if not rows:
-        return None
-
-    best = max(rows, key=lambda x: x[1])
-    return best
 
 
 # ================== HadeethEnc API ==================
@@ -564,12 +757,86 @@ def mixed_channel_message():
         return f"❌ خطأ في بناء الرسالة المختلطة:\n<code>{esc(e)}</code>", None
 
 
-# ================== القوائم ==================
+# ================== الأذكار UI ==================
+
+def adhkar_main_menu():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🌅 أذكار الصباح", callback_data="adhkar_morning_0")],
+        [InlineKeyboardButton("🌙 أذكار المساء", callback_data="adhkar_evening_0")],
+        [InlineKeyboardButton("⏰ تذكير الأذكار", callback_data="adhkar_reminders")],
+        [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")]
+    ])
+
+
+def adhkar_reminder_menu(user_id):
+    morning, evening = get_adhkar_reminder_status(user_id)
+
+    morning_status = "✅ مفعل" if morning else "❌ غير مفعل"
+    evening_status = "✅ مفعل" if evening else "❌ غير مفعل"
+
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(f"🌅 تذكير الصباح: {morning_status}", callback_data="adhkar_toggle_morning")],
+        [InlineKeyboardButton(f"🌙 تذكير المساء: {evening_status}", callback_data="adhkar_toggle_evening")],
+        [InlineKeyboardButton("⬅️ رجوع للأذكار", callback_data="adhkar_menu")],
+        [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")]
+    ])
+
+
+def adhkar_navigation(kind, index, total):
+    buttons = []
+
+    row = []
+
+    if index > 0:
+        row.append(InlineKeyboardButton("⬅️ السابق", callback_data=f"adhkar_{kind}_{index - 1}"))
+
+    if index < total - 1:
+        row.append(InlineKeyboardButton("التالي ➡️", callback_data=f"adhkar_{kind}_{index + 1}"))
+
+    if row:
+        buttons.append(row)
+
+    buttons.append([InlineKeyboardButton("✅ أنهيت الأذكار", callback_data=f"adhkar_done_{kind}")])
+    buttons.append([InlineKeyboardButton("⬅️ رجوع للأذكار", callback_data="adhkar_menu")])
+    buttons.append([InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")])
+
+    return InlineKeyboardMarkup(buttons)
+
+
+def render_adhkar(kind, index):
+    adhkar_list = MORNING_ADHKAR if kind == "morning" else EVENING_ADHKAR
+    title = "🌅 أذكار الصباح" if kind == "morning" else "🌙 أذكار المساء"
+
+    total = len(adhkar_list)
+
+    if index < 0:
+        index = 0
+
+    if index >= total:
+        index = total - 1
+
+    item = adhkar_list[index]
+
+    text = f"""{title}
+
+<b>الذكر {index + 1}/{total}</b>
+{line()}
+{esc(item["text"])}
+{line()}
+🔁 <b>التكرار:</b> {esc(item["repeat"])}
+📚 <b>المصدر:</b> {esc(item["source"])}
+"""
+
+    return text, adhkar_navigation(kind, index, total)
+
+
+# ================== القوائم العامة ==================
 
 def main_menu(user_id):
     buttons = [
         [InlineKeyboardButton("📖 القرآن", callback_data="quran")],
         [InlineKeyboardButton("🕊️ الأحاديث", callback_data="hadith")],
+        [InlineKeyboardButton("🤲 الأذكار", callback_data="adhkar_menu")],
         [InlineKeyboardButton("ℹ️ عن المشروع", callback_data="about")],
         [InlineKeyboardButton("🌐 القناة الرسمية", url="https://t.me/UMMAHBRIDGE")]
     ]
@@ -597,7 +864,6 @@ def admin_menu():
         [InlineKeyboardButton("👀 معاينة حديث", callback_data="admin_preview_hadith")],
         [InlineKeyboardButton("👀 معاينة آية", callback_data="admin_preview_quran")],
         [InlineKeyboardButton("📊 لوحة الإحصائيات", callback_data="admin_stats")],
-        [InlineKeyboardButton("🕒 إحصائيات أوقات النشر", callback_data="admin_time_stats")],
         [InlineKeyboardButton("🛡️ حالة الحماية من التكرار", callback_data="admin_duplicate_status")],
         [InlineKeyboardButton("✍️ إرسال رسالة مخصصة للقناة", callback_data="admin_custom_post")],
         [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")]
@@ -770,6 +1036,42 @@ async def auto_publish_mixed(context: ContextTypes.DEFAULT_TYPE):
         print(f"❌ Scheduled mixed post error: {e}")
 
 
+# ================== تذكير الأذكار ==================
+
+async def send_morning_adhkar_reminders(context: ContextTypes.DEFAULT_TYPE):
+    subscribers = get_adhkar_subscribers("morning")
+
+    for user_id, chat_id in subscribers:
+        try:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text="🌅 <b>تذكير أذكار الصباح</b>\n\nابدأ بقراءة أذكار الصباح الآن.",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("🌅 ابدأ أذكار الصباح", callback_data="adhkar_morning_0")]
+                ]),
+                parse_mode="HTML"
+            )
+        except Exception as e:
+            print(f"Morning adhkar reminder error for {user_id}: {e}")
+
+
+async def send_evening_adhkar_reminders(context: ContextTypes.DEFAULT_TYPE):
+    subscribers = get_adhkar_subscribers("evening")
+
+    for user_id, chat_id in subscribers:
+        try:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text="🌙 <b>تذكير أذكار المساء</b>\n\nابدأ بقراءة أذكار المساء الآن.",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("🌙 ابدأ أذكار المساء", callback_data="adhkar_evening_0")]
+                ]),
+                parse_mode="HTML"
+            )
+        except Exception as e:
+            print(f"Evening adhkar reminder error for {user_id}: {e}")
+
+
 # ================== Callback Handler ==================
 
 async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -777,6 +1079,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await q.answer()
 
     user_id = q.from_user.id
+    chat_id = q.message.chat_id
     add_user(user_id)
 
     data = q.data
@@ -843,6 +1146,81 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await safe_edit(q, text, back())
 
+    elif data == "adhkar_menu":
+        await safe_edit(
+            q,
+            "🤲 <b>قسم الأذكار</b>\n\nاختر ما تريد قراءته:",
+            adhkar_main_menu()
+        )
+
+    elif data.startswith("adhkar_morning_"):
+        index = int(data.split("_")[-1])
+        text, markup = render_adhkar("morning", index)
+        await safe_edit(q, text, markup)
+
+    elif data.startswith("adhkar_evening_"):
+        index = int(data.split("_")[-1])
+        text, markup = render_adhkar("evening", index)
+        await safe_edit(q, text, markup)
+
+    elif data == "adhkar_done_morning":
+        await safe_edit(
+            q,
+            "✅ <b>أحسنت.</b>\n\nانتهيت من أذكار الصباح.\nنسأل الله أن يحفظك ويبارك يومك.",
+            adhkar_main_menu()
+        )
+
+    elif data == "adhkar_done_evening":
+        await safe_edit(
+            q,
+            "✅ <b>أحسنت.</b>\n\nانتهيت من أذكار المساء.\nنسأل الله أن يحفظك في ليلتك.",
+            adhkar_main_menu()
+        )
+
+    elif data == "adhkar_reminders":
+        morning, evening = get_adhkar_reminder_status(user_id)
+
+        text = f"""⏰ <b>تذكير الأذكار</b>
+
+🌅 تذكير الصباح: {"✅ مفعل" if morning else "❌ غير مفعل"}
+🌙 تذكير المساء: {"✅ مفعل" if evening else "❌ غير مفعل"}
+
+🕘 وقت الصباح الحالي: <code>{esc(MORNING_ADHKAR_TIME)}</code>
+🕕 وقت المساء الحالي: <code>{esc(EVENING_ADHKAR_TIME)}</code>
+"""
+
+        await safe_edit(q, text, adhkar_reminder_menu(user_id))
+
+    elif data == "adhkar_toggle_morning":
+        morning, evening = get_adhkar_reminder_status(user_id)
+        new_value = 0 if morning else 1
+        set_adhkar_reminder(user_id, chat_id, "morning", new_value)
+
+        await q.answer("تم تحديث تذكير الصباح ✅", show_alert=True)
+
+        morning, evening = get_adhkar_reminder_status(user_id)
+        text = f"""⏰ <b>تذكير الأذكار</b>
+
+🌅 تذكير الصباح: {"✅ مفعل" if morning else "❌ غير مفعل"}
+🌙 تذكير المساء: {"✅ مفعل" if evening else "❌ غير مفعل"}
+"""
+        await safe_edit(q, text, adhkar_reminder_menu(user_id))
+
+    elif data == "adhkar_toggle_evening":
+        morning, evening = get_adhkar_reminder_status(user_id)
+        new_value = 0 if evening else 1
+        set_adhkar_reminder(user_id, chat_id, "evening", new_value)
+
+        await q.answer("تم تحديث تذكير المساء ✅", show_alert=True)
+
+        morning, evening = get_adhkar_reminder_status(user_id)
+        text = f"""⏰ <b>تذكير الأذكار</b>
+
+🌅 تذكير الصباح: {"✅ مفعل" if morning else "❌ غير مفعل"}
+🌙 تذكير المساء: {"✅ مفعل" if evening else "❌ غير مفعل"}
+"""
+        await safe_edit(q, text, adhkar_reminder_menu(user_id))
+
     elif data == "about":
         await safe_edit(
             q,
@@ -856,6 +1234,8 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🚫 لا نقدّم فتاوى.
 🚫 لا نقدّم آراء شخصية.
 ✅ ننشر نصوصًا موثقة ومترجمة.
+
+🤲 يحتوي البوت على أذكار الصباح والمساء.
 
 🌍 القناة:
 {esc(CHANNEL_ID)}
@@ -874,84 +1254,13 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             admin_menu()
         )
 
-    elif data == "admin_preview_hadith":
-        if not is_admin(user_id):
-            await q.answer("غير مسموح", show_alert=True)
-            return
-
-        text, hid = hadith_channel_message()
-        context.user_data["admin_preview"] = text
-        context.user_data["admin_preview_type"] = "hadith"
-        context.user_data["admin_preview_id"] = hid
-
-        await safe_edit(
-            q,
-            "👀 <b>معاينة الحديث:</b>\n\n" + text,
-            InlineKeyboardMarkup([
-                [InlineKeyboardButton("📢 نشر هذه الرسالة", callback_data="admin_publish_preview")],
-                [InlineKeyboardButton("🔄 معاينة أخرى", callback_data="admin_preview_hadith")],
-                [InlineKeyboardButton("⬅️ رجوع للوحة الإدارة", callback_data="admin")]
-            ])
-        )
-
-    elif data == "admin_preview_quran":
-        if not is_admin(user_id):
-            await q.answer("غير مسموح", show_alert=True)
-            return
-
-        text, ayah_ref = quran_channel_message()
-        context.user_data["admin_preview"] = text
-        context.user_data["admin_preview_type"] = "quran"
-        context.user_data["admin_preview_id"] = ayah_ref
-
-        await safe_edit(
-            q,
-            "👀 <b>معاينة الآية:</b>\n\n" + text,
-            InlineKeyboardMarkup([
-                [InlineKeyboardButton("📢 نشر هذه الرسالة", callback_data="admin_publish_preview")],
-                [InlineKeyboardButton("🔄 معاينة أخرى", callback_data="admin_preview_quran")],
-                [InlineKeyboardButton("⬅️ رجوع للوحة الإدارة", callback_data="admin")]
-            ])
-        )
-
-    elif data == "admin_publish_preview":
-        if not is_admin(user_id):
-            await q.answer("غير مسموح", show_alert=True)
-            return
-
-        text = context.user_data.get("admin_preview")
-        post_type = context.user_data.get("admin_preview_type", "unknown")
-        item_id = context.user_data.get("admin_preview_id", "")
-
-        if not text:
-            text, item_id = hadith_channel_message()
-            post_type = "hadith"
-
-        await send_channel_message(
-            context=context,
-            text=text,
-            post_type=post_type,
-            item_id=item_id,
-            source="admin_preview"
-        )
-
-        await q.answer("تم النشر في القناة ✅", show_alert=True)
-
     elif data == "admin_post_hadith":
         if not is_admin(user_id):
             await q.answer("غير مسموح", show_alert=True)
             return
 
         text, hid = hadith_channel_message()
-
-        await send_channel_message(
-            context=context,
-            text=text,
-            post_type="hadith",
-            item_id=hid,
-            source="admin_manual_hadith"
-        )
-
+        await send_channel_message(context, text, "hadith", hid, "admin_manual_hadith")
         await safe_edit(q, "✅ <b>تم نشر حديث في القناة.</b>", admin_menu())
 
     elif data == "admin_post_quran":
@@ -960,15 +1269,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         text, ayah_ref = quran_channel_message()
-
-        await send_channel_message(
-            context=context,
-            text=text,
-            post_type="quran",
-            item_id=ayah_ref,
-            source="admin_manual_quran"
-        )
-
+        await send_channel_message(context, text, "quran", ayah_ref, "admin_manual_quran")
         await safe_edit(q, "✅ <b>تم نشر آية في القناة.</b>", admin_menu())
 
     elif data == "admin_post_mixed":
@@ -977,15 +1278,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         text, item_id = mixed_channel_message()
-
-        await send_channel_message(
-            context=context,
-            text=text,
-            post_type="mixed",
-            item_id=item_id,
-            source="admin_manual_mixed"
-        )
-
+        await send_channel_message(context, text, "mixed", item_id, "admin_manual_mixed")
         await safe_edit(q, "✅ <b>تم نشر آية + حديث في القناة.</b>", admin_menu())
 
     elif data == "admin_stats":
@@ -993,31 +1286,8 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await q.answer("غير مسموح", show_alert=True)
             return
 
-        total_posts = channel_posts_count()
-        total_skipped = skipped_posts_count()
-        hadith_posts = channel_posts_count_by_type("hadith")
-        quran_posts = channel_posts_count_by_type("quran")
-        mixed_posts = channel_posts_count_by_type("mixed")
-        custom_posts = channel_posts_count_by_type("custom")
-        last_post = last_channel_post()
-
-        if last_post:
-            post_type, item_id, posted_at, hour, source = last_post
-            last_post_text = (
-                f"🕒 <b>آخر نشر:</b> {esc(format_time_from_timestamp(posted_at))}\n"
-                f"📌 <b>نوع آخر منشور:</b> {esc(post_type)}\n"
-                f"🔢 <b>Item ID:</b> <code>{esc(item_id)}</code>\n"
-                f"⚙️ <b>طريقة النشر:</b> {esc(source)}"
-            )
-        else:
-            last_post_text = "🕒 <b>آخر نشر:</b> لا يوجد بعد"
-
-        best = best_posting_hour()
-        if best:
-            best_hour, best_count = best
-            best_text = f"⭐ <b>أكثر وقت نُشر فيه:</b> الساعة {best_hour}:00 بعدد {best_count} منشورات"
-        else:
-            best_text = "⭐ <b>أفضل وقت:</b> لا توجد بيانات كافية بعد"
+        morning_count = len(get_adhkar_subscribers("morning"))
+        evening_count = len(get_adhkar_subscribers("evening"))
 
         await safe_edit(
             q,
@@ -1026,85 +1296,32 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 👥 <b>عدد المستخدمين:</b> {users_count()}
 ❤️ <b>عدد الأحاديث المحفوظة:</b> {saved_count()}
 
-📢 <b>إجمالي منشورات القناة:</b> {total_posts}
-🛡️ <b>محاولات تم تخطيها:</b> {total_skipped}
+📢 <b>إجمالي منشورات القناة:</b> {channel_posts_count()}
+🕊️ <b>منشورات الحديث:</b> {channel_posts_count_by_type("hadith")}
+📖 <b>منشورات القرآن:</b> {channel_posts_count_by_type("quran")}
+📩 <b>منشورات آية + حديث:</b> {channel_posts_count_by_type("mixed")}
 
-🕊️ <b>منشورات الحديث:</b> {hadith_posts}
-📖 <b>منشورات القرآن:</b> {quran_posts}
-📩 <b>منشورات آية + حديث:</b> {mixed_posts}
-✍️ <b>منشورات مخصصة:</b> {custom_posts}
+🤲 <b>مشتركو تذكير الصباح:</b> {morning_count}
+🤲 <b>مشتركو تذكير المساء:</b> {evening_count}
 
-{last_post_text}
-
-{best_text}
-
-🕘 <b>جدول النشر الحالي:</b>
+🕘 <b>أوقات النشر:</b>
 • حديث: <code>{esc(HADITH_POST_TIME)}</code>
 • آية: <code>{esc(QURAN_POST_TIME)}</code>
 • آية + حديث: <code>{esc(MIXED_POST_TIME)}</code>
 
-🛡️ <b>حماية التكرار:</b> <code>{AUTO_POST_MIN_GAP_HOURS}h</code>
+⏰ <b>أوقات الأذكار:</b>
+• صباح: <code>{esc(MORNING_ADHKAR_TIME)}</code>
+• مساء: <code>{esc(EVENING_ADHKAR_TIME)}</code>
 
 🌐 <b>القناة:</b> {esc(CHANNEL_ID)}
 """,
             admin_menu()
         )
 
-    elif data == "admin_time_stats":
-        if not is_admin(user_id):
-            await q.answer("غير مسموح", show_alert=True)
-            return
-
-        rows = posts_by_hour()
-
-        if not rows:
-            text = "🕒 لا توجد إحصائيات نشر بعد."
-        else:
-            text = "🕒 <b>إحصائيات أوقات النشر</b>\n\n"
-            for hour, count in rows:
-                text += f"• الساعة <b>{hour}:00</b> — عدد المنشورات: <b>{count}</b>\n"
-
-            best = best_posting_hour()
-            if best:
-                best_hour, best_count = best
-                text += f"\n⭐ <b>اقتراح حالي:</b> الساعة <b>{best_hour}:00</b> لأنها الأكثر استخدامًا في سجل النشر."
-
-        await safe_edit(q, text, admin_back())
-
     elif data == "admin_duplicate_status":
         if not is_admin(user_id):
             await q.answer("غير مسموح", show_alert=True)
             return
-
-        status_lines = []
-        for post_type in ["hadith", "quran", "mixed"]:
-            recently_posted, last_post = was_auto_posted_recently(post_type, AUTO_POST_MIN_GAP_HOURS)
-
-            if last_post:
-                _, item_id, posted_at, hour, source = last_post
-                last_text = format_time_from_timestamp(posted_at)
-            else:
-                last_text = "لا يوجد نشر تلقائي سابق"
-
-            status = "🛑 محمي الآن من التكرار" if recently_posted else "✅ مسموح بالنشر التلقائي"
-
-            status_lines.append(
-                f"📌 <b>{esc(post_type)}</b>\n"
-                f"آخر نشر تلقائي: {esc(last_text)}\n"
-                f"الحالة: {status}\n"
-            )
-
-        last_skip = last_skipped_post()
-        if last_skip:
-            skip_type, reason, skipped_at, hour, source = last_skip
-            skip_text = (
-                f"\n🛡️ <b>آخر تخطي:</b>\n"
-                f"النوع: <code>{esc(skip_type)}</code>\n"
-                f"الوقت: {esc(format_time_from_timestamp(skipped_at))}\n"
-                f"السبب: {esc(reason)}\n"
-            )
-        else:
-            skip_text = "\n🛡️ <b>آخر تخطي:</b> لا يوجد"
 
         await safe_edit(
             q,
@@ -1113,14 +1330,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 مدة الحماية الحالية:
 <code>{AUTO_POST_MIN_GAP_HOURS} ساعات</code>
 
-{line().join(status_lines)}
-
-📊 <b>عدد التخطيات:</b>
-• حديث: {skipped_posts_count_by_type("hadith")}
-• آية: {skipped_posts_count_by_type("quran")}
-• آية + حديث: {skipped_posts_count_by_type("mixed")}
-
-{skip_text}
+هذه الحماية تمنع النشر التلقائي المتكرر لنفس نوع المنشور خلال المدة المحددة.
 """,
             admin_back()
         )
@@ -1184,30 +1394,34 @@ def main():
     app.add_handler(CallbackQueryHandler(handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
 
-    hadith_time = parse_schedule_time(HADITH_POST_TIME, "09:00")
-    quran_time = parse_schedule_time(QURAN_POST_TIME, "15:00")
-    mixed_time = parse_schedule_time(MIXED_POST_TIME, "21:00")
-
     app.job_queue.run_daily(
         auto_publish_hadith,
-        time=hadith_time
+        time=parse_schedule_time(HADITH_POST_TIME, "09:00")
     )
 
     app.job_queue.run_daily(
         auto_publish_quran,
-        time=quran_time
+        time=parse_schedule_time(QURAN_POST_TIME, "15:00")
     )
 
     app.job_queue.run_daily(
         auto_publish_mixed,
-        time=mixed_time
+        time=parse_schedule_time(MIXED_POST_TIME, "21:00")
     )
 
-    print("Bot running with duplicate protection...")
-    print(f"Hadith post time: {HADITH_POST_TIME}")
-    print(f"Quran post time: {QURAN_POST_TIME}")
-    print(f"Mixed post time: {MIXED_POST_TIME}")
-    print(f"Auto post min gap: {AUTO_POST_MIN_GAP_HOURS} hours")
+    app.job_queue.run_daily(
+        send_morning_adhkar_reminders,
+        time=parse_schedule_time(MORNING_ADHKAR_TIME, "06:00")
+    )
+
+    app.job_queue.run_daily(
+        send_evening_adhkar_reminders,
+        time=parse_schedule_time(EVENING_ADHKAR_TIME, "18:00")
+    )
+
+    print("Bot running with Adhkar feature...")
+    print(f"Morning adhkar reminder: {MORNING_ADHKAR_TIME}")
+    print(f"Evening adhkar reminder: {EVENING_ADHKAR_TIME}")
 
     app.run_polling()
 
