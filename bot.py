@@ -28,305 +28,16 @@ MIXED_POST_TIME = os.environ.get("MIXED_POST_TIME", "21:00")
 MORNING_ADHKAR_TIME = os.environ.get("MORNING_ADHKAR_TIME", "06:00")
 EVENING_ADHKAR_TIME = os.environ.get("EVENING_ADHKAR_TIME", "18:00")
 
-AUTO_POST_MIN_GAP_HOURS = int(os.environ.get("AUTO_POST_MIN_GAP_HOURS", "6"))
-
 QURAN_API = "https://api.alquran.cloud/v1"
 HADEETH_API = "https://hadeethenc.com/api/v1/hadeeths/one/"
 LIST_API = "https://hadeethenc.com/api/v1/hadeeths/list/"
+
 DB = "bot.db"
 
 
-# ================== ADHKAR DATA ==================
-
-MORNING_ADHKAR = [
-    {
-        "ar": "أَصْـبَحْنا وَأَصْـبَحَ المُـلْكُ لله، والحَمْدُ لله، لا إلهَ إلاّ اللهُ وحدَهُ لا شريكَ له، لهُ المُـلْكُ ولهُ الحَمْـد، وهوَ على كلّ شيءٍ قدير.",
-        "en": "We have entered the morning, and all dominion belongs to Allah. Praise belongs to Allah. There is no deity worthy of worship except Allah alone, with no partner. His is the dominion and His is the praise, and He has power over all things.",
-        "de": "Wir sind in den Morgen eingetreten, und die Herrschaft gehört Allah. Alles Lob gehört Allah. Es gibt keinen anbetungswürdigen Gott außer Allah allein, ohne Partner. Ihm gehört die Herrschaft und Ihm gehört das Lob, und Er hat Macht über alle Dinge.",
-        "repeat_ar": "مرة واحدة",
-        "repeat_en": "Once",
-        "repeat_de": "Einmal",
-        "source_ar": "من أذكار الصباح",
-        "source_en": "Morning adhkar",
-        "source_de": "Morgen-Adhkar",
-    },
-    {
-        "ar": "اللّهـمَّ بِكَ أَصْـبَحْنا، وَبِكَ أَمْسَيْـنا، وَبِكَ نَحْـيا، وَبِكَ نَمـوتُ، وَإِلَيْكَ النُّـشور.",
-        "en": "O Allah, by You we enter the morning, by You we enter the evening, by You we live, by You we die, and to You is the resurrection.",
-        "de": "O Allah, durch Dich treten wir in den Morgen ein, durch Dich treten wir in den Abend ein, durch Dich leben wir, durch Dich sterben wir, und zu Dir ist die Auferstehung.",
-        "repeat_ar": "مرة واحدة",
-        "repeat_en": "Once",
-        "repeat_de": "Einmal",
-        "source_ar": "من أذكار الصباح",
-        "source_en": "Morning adhkar",
-        "source_de": "Morgen-Adhkar",
-    },
-    {
-        "ar": "اللّهـمَّ أَنْتَ رَبِّـي لا إلهَ إلاّ أَنْتَ، خَلَقْتَنـي وأنا عَبْـدُك، وأنا على عَهْـدِكَ ووَعْـدِكَ ما استطعتُ، أعوذُ بكَ مِنْ شَرِّ ما صَنَعْت، أبوءُ لكَ بنِعْمَتِكَ عليَّ، وأبوءُ بذَنْـبي، فاغْفِـرْ لي، فإنّهُ لا يَغْفِـرُ الذُّنوبَ إلاّ أنت.",
-        "en": "O Allah, You are my Lord. There is no deity worthy of worship except You. You created me and I am Your servant. I remain upon Your covenant and promise as much as I am able. I seek refuge in You from the evil of what I have done. I acknowledge Your favor upon me and I acknowledge my sin, so forgive me, for none forgives sins except You.",
-        "de": "O Allah, Du bist mein Herr. Es gibt keinen anbetungswürdigen Gott außer Dir. Du hast mich erschaffen und ich bin Dein Diener. Ich halte mich, soweit ich kann, an Deinen Bund und Dein Versprechen. Ich suche Zuflucht bei Dir vor dem Übel dessen, was ich getan habe. Ich erkenne Deine Gnade an mir an und erkenne meine Sünde an, so vergib mir, denn niemand vergibt Sünden außer Dir.",
-        "repeat_ar": "مرة واحدة",
-        "repeat_en": "Once",
-        "repeat_de": "Einmal",
-        "source_ar": "سيد الاستغفار",
-        "source_en": "The master supplication for forgiveness",
-        "source_de": "Das umfassende Bittgebet um Vergebung",
-    },
-    {
-        "ar": "رَضيتُ باللهِ ربًّا، وبالإسلامِ دينًا، وبمحمّدٍ ﷺ نبيًّا.",
-        "en": "I am pleased with Allah as my Lord, Islam as my religion, and Muhammad ﷺ as my Prophet.",
-        "de": "Ich bin zufrieden mit Allah als meinem Herrn, mit dem Islam als meiner Religion und mit Muhammad ﷺ als meinem Propheten.",
-        "repeat_ar": "ثلاث مرات",
-        "repeat_en": "Three times",
-        "repeat_de": "Dreimal",
-        "source_ar": "من أذكار الصباح والمساء",
-        "source_en": "Morning and evening adhkar",
-        "source_de": "Morgen- und Abend-Adhkar",
-    },
-    {
-        "ar": "اللّهـمَّ إنّي أَصْبَحْتُ أُشْهِدُكَ، وأُشْهِدُ حَمَلَةَ عَرْشِكَ، ومَلائِكَتَكَ، وجميعَ خَلْقِكَ، أنّكَ أنتَ اللهُ لا إلهَ إلاّ أنتَ وحدَكَ لا شريكَ لك، وأنّ محمّدًا عبدُكَ ورسولُك.",
-        "en": "O Allah, I have entered the morning calling You to witness, and calling the bearers of Your Throne, Your angels, and all Your creation to witness, that You are Allah; there is no deity worthy of worship except You alone with no partner, and that Muhammad is Your servant and Messenger.",
-        "de": "O Allah, ich bin in den Morgen eingetreten und rufe Dich, die Träger Deines Thrones, Deine Engel und Deine gesamte Schöpfung als Zeugen an, dass Du Allah bist; es gibt keinen anbetungswürdigen Gott außer Dir allein, ohne Partner, und dass Muhammad Dein Diener und Gesandter ist.",
-        "repeat_ar": "أربع مرات",
-        "repeat_en": "Four times",
-        "repeat_de": "Viermal",
-        "source_ar": "من أذكار الصباح",
-        "source_en": "Morning adhkar",
-        "source_de": "Morgen-Adhkar",
-    },
-    {
-        "ar": "اللّهـمَّ ما أَصْبَحَ بي مِنْ نِعْمَةٍ أو بأَحَدٍ مِنْ خَلْقِكَ، فَمِنْكَ وحدَكَ لا شريكَ لك، فَلَكَ الحمدُ ولكَ الشُّكر.",
-        "en": "O Allah, whatever blessing has come to me or to any of Your creation this morning is from You alone, with no partner. To You belongs all praise and all thanks.",
-        "de": "O Allah, jede Gnade, die mich oder eines Deiner Geschöpfe an diesem Morgen erreicht hat, ist von Dir allein, ohne Partner. Dir gebührt alles Lob und aller Dank.",
-        "repeat_ar": "مرة واحدة",
-        "repeat_en": "Once",
-        "repeat_de": "Einmal",
-        "source_ar": "من أذكار الصباح",
-        "source_en": "Morning adhkar",
-        "source_de": "Morgen-Adhkar",
-    },
-    {
-        "ar": "حَسْبِيَ اللهُ لا إلهَ إلاّ هو، عليهِ توكّلتُ، وهوَ ربُّ العرشِ العظيم.",
-        "en": "Allah is sufficient for me. There is no deity worthy of worship except Him. Upon Him I rely, and He is the Lord of the Mighty Throne.",
-        "de": "Allah genügt mir. Es gibt keinen anbetungswürdigen Gott außer Ihm. Auf Ihn vertraue ich, und Er ist der Herr des gewaltigen Thrones.",
-        "repeat_ar": "سبع مرات",
-        "repeat_en": "Seven times",
-        "repeat_de": "Siebenmal",
-        "source_ar": "من أذكار الصباح والمساء",
-        "source_en": "Morning and evening adhkar",
-        "source_de": "Morgen- und Abend-Adhkar",
-    },
-    {
-        "ar": "بِسْمِ اللهِ الذي لا يَضُرُّ مع اسمِهِ شيءٌ في الأرضِ ولا في السماءِ، وهوَ السميعُ العليم.",
-        "en": "In the name of Allah, with whose name nothing on earth or in the heavens can cause harm, and He is the All-Hearing, the All-Knowing.",
-        "de": "Im Namen Allahs, mit dessen Namen nichts auf der Erde und nichts im Himmel Schaden zufügen kann. Er ist der Allhörende, der Allwissende.",
-        "repeat_ar": "ثلاث مرات",
-        "repeat_en": "Three times",
-        "repeat_de": "Dreimal",
-        "source_ar": "من أذكار الصباح والمساء",
-        "source_en": "Morning and evening adhkar",
-        "source_de": "Morgen- und Abend-Adhkar",
-    },
-    {
-        "ar": "اللّهـمَّ عافِني في بَدَني، اللّهـمَّ عافِني في سَمْعي، اللّهـمَّ عافِني في بَصَري، لا إلهَ إلاّ أنت.",
-        "en": "O Allah, grant me well-being in my body. O Allah, grant me well-being in my hearing. O Allah, grant me well-being in my sight. There is no deity worthy of worship except You.",
-        "de": "O Allah, schenke mir Wohlergehen in meinem Körper. O Allah, schenke mir Wohlergehen in meinem Gehör. O Allah, schenke mir Wohlergehen in meinem Sehvermögen. Es gibt keinen anbetungswürdigen Gott außer Dir.",
-        "repeat_ar": "ثلاث مرات",
-        "repeat_en": "Three times",
-        "repeat_de": "Dreimal",
-        "source_ar": "من أذكار الصباح والمساء",
-        "source_en": "Morning and evening adhkar",
-        "source_de": "Morgen- und Abend-Adhkar",
-    },
-    {
-        "ar": "اللّهـمَّ إنّي أعوذُ بكَ مِنَ الكُفْرِ والفَقْر، وأعوذُ بكَ مِنْ عذابِ القَبْر، لا إلهَ إلاّ أنت.",
-        "en": "O Allah, I seek refuge in You from disbelief and poverty, and I seek refuge in You from the punishment of the grave. There is no deity worthy of worship except You.",
-        "de": "O Allah, ich suche Zuflucht bei Dir vor Unglauben und Armut, und ich suche Zuflucht bei Dir vor der Strafe des Grabes. Es gibt keinen anbetungswürdigen Gott außer Dir.",
-        "repeat_ar": "ثلاث مرات",
-        "repeat_en": "Three times",
-        "repeat_de": "Dreimal",
-        "source_ar": "من أذكار الصباح والمساء",
-        "source_en": "Morning and evening adhkar",
-        "source_de": "Morgen- und Abend-Adhkar",
-    },
-    {
-        "ar": "اللّهـمَّ إنّي أسألُكَ العفوَ والعافيةَ في الدنيا والآخرة.",
-        "en": "O Allah, I ask You for pardon and well-being in this world and the Hereafter.",
-        "de": "O Allah, ich bitte Dich um Vergebung und Wohlergehen im Diesseits und im Jenseits.",
-        "repeat_ar": "مرة واحدة",
-        "repeat_en": "Once",
-        "repeat_de": "Einmal",
-        "source_ar": "من أذكار الصباح والمساء",
-        "source_en": "Morning and evening adhkar",
-        "source_de": "Morgen- und Abend-Adhkar",
-    },
-    {
-        "ar": "اللّهـمَّ إنّي أسألُكَ العفوَ والعافيةَ في ديني ودنيايَ وأهلي ومالي.",
-        "en": "O Allah, I ask You for pardon and well-being in my religion, my worldly life, my family, and my wealth.",
-        "de": "O Allah, ich bitte Dich um Vergebung und Wohlergehen in meiner Religion, meinem weltlichen Leben, meiner Familie und meinem Besitz.",
-        "repeat_ar": "مرة واحدة",
-        "repeat_en": "Once",
-        "repeat_de": "Einmal",
-        "source_ar": "من أذكار الصباح والمساء",
-        "source_en": "Morning and evening adhkar",
-        "source_de": "Morgen- und Abend-Adhkar",
-    },
-    {
-        "ar": "اللّهـمَّ استُرْ عوراتي، وآمِنْ رَوْعاتي.",
-        "en": "O Allah, conceal my faults and calm my fears.",
-        "de": "O Allah, bedecke meine Fehler und beruhige meine Ängste.",
-        "repeat_ar": "مرة واحدة",
-        "repeat_en": "Once",
-        "repeat_de": "Einmal",
-        "source_ar": "من أذكار الصباح والمساء",
-        "source_en": "Morning and evening adhkar",
-        "source_de": "Morgen- und Abend-Adhkar",
-    },
-    {
-        "ar": "اللّهـمَّ احفظني مِنْ بينِ يديَّ، ومِنْ خَلْفي، وعن يميني، وعن شمالي، ومِنْ فوقي، وأعوذُ بعظمتِكَ أن أُغتالَ مِنْ تحتي.",
-        "en": "O Allah, protect me from in front of me, from behind me, from my right, from my left, and from above me. I seek refuge in Your greatness from being taken unaware from beneath me.",
-        "de": "O Allah, beschütze mich von vorne, von hinten, von rechts, von links und von oben. Ich suche Zuflucht bei Deiner Größe davor, von unten unerwartet getroffen zu werden.",
-        "repeat_ar": "مرة واحدة",
-        "repeat_en": "Once",
-        "repeat_de": "Einmal",
-        "source_ar": "من أذكار الصباح والمساء",
-        "source_en": "Morning and evening adhkar",
-        "source_de": "Morgen- und Abend-Adhkar",
-    },
-    {
-        "ar": "يا حيُّ يا قيّومُ، برحمتِكَ أستغيث، أصلِحْ لي شأني كلَّه، ولا تَكِلْني إلى نفسي طَرْفَةَ عين.",
-        "en": "O Ever-Living, O Sustainer, by Your mercy I seek help. Rectify all of my affairs and do not leave me to myself even for the blink of an eye.",
-        "de": "O Ewig-Lebendiger, O Erhalter, durch Deine Barmherzigkeit suche ich Hilfe. Verbessere all meine Angelegenheiten und überlasse mich mir selbst nicht einmal für einen Augenblick.",
-        "repeat_ar": "مرة واحدة",
-        "repeat_en": "Once",
-        "repeat_de": "Einmal",
-        "source_ar": "من أذكار الصباح والمساء",
-        "source_en": "Morning and evening adhkar",
-        "source_de": "Morgen- und Abend-Adhkar",
-    },
-    {
-        "ar": "أَصْبَحْنا على فِطْرَةِ الإسلام، وعلى كلمةِ الإخلاص، وعلى دينِ نبيّنا محمدٍ ﷺ، وعلى مِلّةِ أبينا إبراهيمَ حنيفًا مسلمًا وما كانَ مِنَ المشركين.",
-        "en": "We have entered the morning upon the natural way of Islam, the word of sincerity, the religion of our Prophet Muhammad ﷺ, and the way of our father Ibrahim, who was upright and Muslim and was not among the polytheists.",
-        "de": "Wir sind in den Morgen eingetreten auf der natürlichen Veranlagung des Islam, auf dem Wort der Aufrichtigkeit, auf der Religion unseres Propheten Muhammad ﷺ und auf dem Weg unseres Vaters Ibrahim, der aufrichtig und Muslim war und nicht zu den Götzendienern gehörte.",
-        "repeat_ar": "مرة واحدة",
-        "repeat_en": "Once",
-        "repeat_de": "Einmal",
-        "source_ar": "من أذكار الصباح",
-        "source_en": "Morning adhkar",
-        "source_de": "Morgen-Adhkar",
-    },
-    {
-        "ar": "سُبْحانَ اللهِ وبحمدِه.",
-        "en": "Glory and praise be to Allah.",
-        "de": "Preis sei Allah und Lob sei Ihm.",
-        "repeat_ar": "مائة مرة",
-        "repeat_en": "One hundred times",
-        "repeat_de": "Hundertmal",
-        "source_ar": "من أذكار الصباح والمساء",
-        "source_en": "Morning and evening adhkar",
-        "source_de": "Morgen- und Abend-Adhkar",
-    },
-    {
-        "ar": "لا إلهَ إلاّ اللهُ وحدَهُ لا شريكَ له، لهُ الملكُ ولهُ الحمدُ، وهوَ على كلّ شيءٍ قدير.",
-        "en": "There is no deity worthy of worship except Allah alone, with no partner. His is the dominion and His is the praise, and He has power over all things.",
-        "de": "Es gibt keinen anbetungswürdigen Gott außer Allah allein, ohne Partner. Ihm gehört die Herrschaft und Ihm gehört das Lob, und Er hat Macht über alle Dinge.",
-        "repeat_ar": "عشر مرات أو مائة مرة",
-        "repeat_en": "Ten or one hundred times",
-        "repeat_de": "Zehnmal oder hundertmal",
-        "source_ar": "من أذكار الصباح والمساء",
-        "source_en": "Morning and evening adhkar",
-        "source_de": "Morgen- und Abend-Adhkar",
-    },
-    {
-        "ar": "أستغفرُ اللهَ وأتوبُ إليه.",
-        "en": "I seek Allah’s forgiveness and repent to Him.",
-        "de": "Ich bitte Allah um Vergebung und bereue vor Ihm.",
-        "repeat_ar": "مائة مرة",
-        "repeat_en": "One hundred times",
-        "repeat_de": "Hundertmal",
-        "source_ar": "من الأذكار",
-        "source_en": "General dhikr",
-        "source_de": "Allgemeiner Dhikr",
-    },
-    {
-        "ar": "اللّهـمَّ صلِّ وسلّمْ على نبيّنا محمد.",
-        "en": "O Allah, send prayers and peace upon our Prophet Muhammad.",
-        "de": "O Allah, sende Segen und Frieden auf unseren Propheten Muhammad.",
-        "repeat_ar": "عشر مرات",
-        "repeat_en": "Ten times",
-        "repeat_de": "Zehnmal",
-        "source_ar": "من الأذكار المشروعة",
-        "source_en": "Legislated remembrance",
-        "source_de": "Überlieferter Dhikr",
-    },
-]
-
-EVENING_ADHKAR = []
-for item in MORNING_ADHKAR:
-    EVENING_ADHKAR.append(item.copy())
-
-EVENING_ADHKAR[0] = {
-    "ar": "أَمْسَيْنا وأَمْسَى المُـلْكُ لله، والحَمْدُ لله، لا إلهَ إلاّ اللهُ وحدَهُ لا شريكَ له، لهُ المُـلْكُ ولهُ الحَمْـد، وهوَ على كلّ شيءٍ قدير.",
-    "en": "We have entered the evening, and all dominion belongs to Allah. Praise belongs to Allah. There is no deity worthy of worship except Allah alone, with no partner. His is the dominion and His is the praise, and He has power over all things.",
-    "de": "Wir sind in den Abend eingetreten, und die Herrschaft gehört Allah. Alles Lob gehört Allah. Es gibt keinen anbetungswürdigen Gott außer Allah allein, ohne Partner. Ihm gehört die Herrschaft und Ihm gehört das Lob, und Er hat Macht über alle Dinge.",
-    "repeat_ar": "مرة واحدة",
-    "repeat_en": "Once",
-    "repeat_de": "Einmal",
-    "source_ar": "من أذكار المساء",
-    "source_en": "Evening adhkar",
-    "source_de": "Abend-Adhkar",
-}
-
-EVENING_ADHKAR[1] = {
-    "ar": "اللّهـمَّ بِكَ أَمْسَيْنا، وبِكَ أَصْبَحْنا، وبِكَ نَحْيا، وبِكَ نَموتُ، وإليكَ المصير.",
-    "en": "O Allah, by You we enter the evening, by You we enter the morning, by You we live, by You we die, and to You is the return.",
-    "de": "O Allah, durch Dich treten wir in den Abend ein, durch Dich treten wir in den Morgen ein, durch Dich leben wir, durch Dich sterben wir, und zu Dir ist die Rückkehr.",
-    "repeat_ar": "مرة واحدة",
-    "repeat_en": "Once",
-    "repeat_de": "Einmal",
-    "source_ar": "من أذكار المساء",
-    "source_en": "Evening adhkar",
-    "source_de": "Abend-Adhkar",
-}
-
-EVENING_ADHKAR[4] = {
-    "ar": "اللّهـمَّ إنّي أَمْسَيْتُ أُشْهِدُكَ، وأُشْهِدُ حَمَلَةَ عَرْشِكَ، ومَلائِكَتَكَ، وجميعَ خَلْقِكَ، أنّكَ أنتَ اللهُ لا إلهَ إلاّ أنتَ وحدَكَ لا شريكَ لك، وأنّ محمّدًا عبدُكَ ورسولُك.",
-    "en": "O Allah, I have entered the evening calling You to witness, and calling the bearers of Your Throne, Your angels, and all Your creation to witness, that You are Allah; there is no deity worthy of worship except You alone with no partner, and that Muhammad is Your servant and Messenger.",
-    "de": "O Allah, ich bin in den Abend eingetreten und rufe Dich, die Träger Deines Thrones, Deine Engel und Deine gesamte Schöpfung als Zeugen an, dass Du Allah bist; es gibt keinen anbetungswürdigen Gott außer Dir allein, ohne Partner, und dass Muhammad Dein Diener und Gesandter ist.",
-    "repeat_ar": "أربع مرات",
-    "repeat_en": "Four times",
-    "repeat_de": "Viermal",
-    "source_ar": "من أذكار المساء",
-    "source_en": "Evening adhkar",
-    "source_de": "Abend-Adhkar",
-}
-
-EVENING_ADHKAR[5] = {
-    "ar": "اللّهـمَّ ما أَمْسَى بي مِنْ نِعْمَةٍ أو بأَحَدٍ مِنْ خَلْقِكَ، فَمِنْكَ وحدَكَ لا شريكَ لك، فَلَكَ الحمدُ ولكَ الشُّكر.",
-    "en": "O Allah, whatever blessing has come to me or to any of Your creation this evening is from You alone, with no partner. To You belongs all praise and all thanks.",
-    "de": "O Allah, jede Gnade, die mich oder eines Deiner Geschöpfe an diesem Abend erreicht hat, ist von Dir allein, ohne Partner. Dir gebührt alles Lob und aller Dank.",
-    "repeat_ar": "مرة واحدة",
-    "repeat_en": "Once",
-    "repeat_de": "Einmal",
-    "source_ar": "من أذكار المساء",
-    "source_en": "Evening adhkar",
-    "source_de": "Abend-Adhkar",
-}
-
-EVENING_ADHKAR[15] = {
-    "ar": "أَمْسَيْنا على فِطْرَةِ الإسلام، وعلى كلمةِ الإخلاص، وعلى دينِ نبيّنا محمدٍ ﷺ، وعلى مِلّةِ أبينا إبراهيمَ حنيفًا مسلمًا وما كانَ مِنَ المشركين.",
-    "en": "We have entered the evening upon the natural way of Islam, the word of sincerity, the religion of our Prophet Muhammad ﷺ, and the way of our father Ibrahim, who was upright and Muslim and was not among the polytheists.",
-    "de": "Wir sind in den Abend eingetreten auf der natürlichen Veranlagung des Islam, auf dem Wort der Aufrichtigkeit, auf der Religion unseres Propheten Muhammad ﷺ und auf dem Weg unseres Vaters Ibrahim, der aufrichtig und Muslim war und nicht zu den Götzendienern gehörte.",
-    "repeat_ar": "مرة واحدة",
-    "repeat_en": "Once",
-    "repeat_de": "Einmal",
-    "source_ar": "من أذكار المساء",
-    "source_en": "Evening adhkar",
-    "source_de": "Abend-Adhkar",
-}
-
-
-# ================== TOOLS ==================
+# =====================================================
+# Basic Helpers
+# =====================================================
 
 def esc(text):
     return html.escape(str(text or ""))
@@ -344,6 +55,12 @@ def is_admin(user_id):
     return user_id == ADMIN_ID
 
 
+def format_time_from_timestamp(ts):
+    if not ts:
+        return "غير متوفر"
+    return datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+
+
 def parse_schedule_time(value, fallback="09:00"):
     try:
         value = str(value or fallback).strip()
@@ -351,23 +68,470 @@ def parse_schedule_time(value, fallback="09:00"):
         hour = int(hour_text)
         minute = int(minute_text)
 
-        if hour < 0 or hour > 23 or minute < 0 or minute > 59:
-            raise ValueError("Invalid time")
+        if hour < 0 or hour > 23:
+            raise ValueError("Invalid hour")
+
+        if minute < 0 or minute > 59:
+            raise ValueError("Invalid minute")
 
         return datetime.time(hour=hour, minute=minute, second=0)
 
     except Exception:
         fallback_hour, fallback_minute = fallback.split(":")
-        return datetime.time(hour=int(fallback_hour), minute=int(fallback_minute), second=0)
+        return datetime.time(
+            hour=int(fallback_hour),
+            minute=int(fallback_minute),
+            second=0
+        )
 
 
-def format_time_from_timestamp(ts):
-    if not ts:
-        return "غير متوفر"
-    return datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+# =====================================================
+# Expanded Language System
+# =====================================================
+
+ADHKAR_LANGUAGES = {
+    "ar": {
+        "flag": "🇸🇦",
+        "name": "العربية",
+        "label_arabic_text": "النص العربي",
+        "label_meaning": "المعنى",
+        "label_repeat": "التكرار",
+        "label_source": "المصدر",
+        "missing": "",
+        "morning_title": "🌅 أذكار الصباح",
+        "evening_title": "🌙 أذكار المساء",
+        "dhikr_word": "الذكر",
+        "done_morning": "✅ <b>أحسنت.</b>\n\nانتهيت من أذكار الصباح.\nنسأل الله أن يحفظك ويبارك يومك.",
+        "done_evening": "✅ <b>أحسنت.</b>\n\nانتهيت من أذكار المساء.\nنسأل الله أن يحفظك في ليلتك.",
+        "reminder_morning": "🌅 <b>تذكير أذكار الصباح</b>\n\nابدأ بقراءة أذكار الصباح الآن.",
+        "reminder_evening": "🌙 <b>تذكير أذكار المساء</b>\n\nابدأ بقراءة أذكار المساء الآن.",
+        "start_morning_button": "🌅 ابدأ أذكار الصباح",
+        "start_evening_button": "🌙 ابدأ أذكار المساء",
+    },
+    "en": {
+        "flag": "🇬🇧",
+        "name": "English",
+        "label_arabic_text": "Arabic text",
+        "label_meaning": "Meaning in English",
+        "label_repeat": "Repeat",
+        "label_source": "Source",
+        "missing": "Meaning in this language is being added.",
+        "morning_title": "🌅 Morning Adhkar",
+        "evening_title": "🌙 Evening Adhkar",
+        "dhikr_word": "Dhikr",
+        "done_morning": "✅ <b>Well done.</b>\n\nYou finished the morning adhkar.",
+        "done_evening": "✅ <b>Well done.</b>\n\nYou finished the evening adhkar.",
+        "reminder_morning": "🌅 <b>Morning Adhkar Reminder</b>\n\nStart reading your morning adhkar now.",
+        "reminder_evening": "🌙 <b>Evening Adhkar Reminder</b>\n\nStart reading your evening adhkar now.",
+        "start_morning_button": "🌅 Start Morning Adhkar",
+        "start_evening_button": "🌙 Start Evening Adhkar",
+    },
+    "de": {
+        "flag": "🇩🇪",
+        "name": "Deutsch",
+        "label_arabic_text": "Arabischer Text",
+        "label_meaning": "Bedeutung auf Deutsch",
+        "label_repeat": "Wiederholung",
+        "label_source": "Quelle",
+        "missing": "Die Bedeutung in dieser Sprache wird noch hinzugefügt.",
+        "morning_title": "🌅 Morgen-Adhkar",
+        "evening_title": "🌙 Abend-Adhkar",
+        "dhikr_word": "Dhikr",
+        "done_morning": "✅ <b>Sehr gut.</b>\n\nDu hast die Morgen-Adhkar beendet.",
+        "done_evening": "✅ <b>Sehr gut.</b>\n\nDu hast die Abend-Adhkar beendet.",
+        "reminder_morning": "🌅 <b>Erinnerung an Morgen-Adhkar</b>\n\nBeginne jetzt mit deinen Morgen-Adhkar.",
+        "reminder_evening": "🌙 <b>Erinnerung an Abend-Adhkar</b>\n\nBeginne jetzt mit deinen Abend-Adhkar.",
+        "start_morning_button": "🌅 Morgen-Adhkar starten",
+        "start_evening_button": "🌙 Abend-Adhkar starten",
+    },
+    "fr": {
+        "flag": "🇫🇷",
+        "name": "Français",
+        "label_arabic_text": "Texte arabe",
+        "label_meaning": "Sens en français",
+        "label_repeat": "Répétition",
+        "label_source": "Source",
+        "missing": "Le sens dans cette langue est en cours d’ajout.",
+        "morning_title": "🌅 Adhkâr du matin",
+        "evening_title": "🌙 Adhkâr du soir",
+        "dhikr_word": "Dhikr",
+        "done_morning": "✅ <b>Très bien.</b>\n\nVous avez terminé les adhkâr du matin.",
+        "done_evening": "✅ <b>Très bien.</b>\n\nVous avez terminé les adhkâr du soir.",
+        "reminder_morning": "🌅 <b>Rappel des adhkâr du matin</b>\n\nCommencez vos adhkâr du matin maintenant.",
+        "reminder_evening": "🌙 <b>Rappel des adhkâr du soir</b>\n\nCommencez vos adhkâr du soir maintenant.",
+        "start_morning_button": "🌅 Commencer les adhkâr du matin",
+        "start_evening_button": "🌙 Commencer les adhkâr du soir",
+    },
+    "es": {
+        "flag": "🇪🇸",
+        "name": "Español",
+        "label_arabic_text": "Texto árabe",
+        "label_meaning": "Significado en español",
+        "label_repeat": "Repetición",
+        "label_source": "Fuente",
+        "missing": "El significado en este idioma se está añadiendo.",
+        "morning_title": "🌅 Adhkar de la mañana",
+        "evening_title": "🌙 Adhkar de la tarde",
+        "dhikr_word": "Dhikr",
+        "done_morning": "✅ <b>Muy bien.</b>\n\nHas terminado los adhkar de la mañana.",
+        "done_evening": "✅ <b>Muy bien.</b>\n\nHas terminado los adhkar de la tarde.",
+        "reminder_morning": "🌅 <b>Recordatorio de adhkar de la mañana</b>\n\nEmpieza ahora tus adhkar de la mañana.",
+        "reminder_evening": "🌙 <b>Recordatorio de adhkar de la tarde</b>\n\nEmpieza ahora tus adhkar de la tarde.",
+        "start_morning_button": "🌅 Empezar adhkar de la mañana",
+        "start_evening_button": "🌙 Empezar adhkar de la tarde",
+    },
+    "tr": {
+        "flag": "🇹🇷",
+        "name": "Türkçe",
+        "label_arabic_text": "Arapça metin",
+        "label_meaning": "Türkçe anlamı",
+        "label_repeat": "Tekrar",
+        "label_source": "Kaynak",
+        "missing": "Bu dildeki anlam ekleniyor.",
+        "morning_title": "🌅 Sabah zikirleri",
+        "evening_title": "🌙 Akşam zikirleri",
+        "dhikr_word": "Zikir",
+        "done_morning": "✅ <b>Güzel.</b>\n\nSabah zikirlerini tamamladınız.",
+        "done_evening": "✅ <b>Güzel.</b>\n\nAkşam zikirlerini tamamladınız.",
+        "reminder_morning": "🌅 <b>Sabah zikirleri hatırlatması</b>\n\nSabah zikirlerinizi okumaya başlayın.",
+        "reminder_evening": "🌙 <b>Akşam zikirleri hatırlatması</b>\n\nAkşam zikirlerinizi okumaya başlayın.",
+        "start_morning_button": "🌅 Sabah zikirlerine başla",
+        "start_evening_button": "🌙 Akşam zikirlerine başla",
+    },
+    "id": {
+        "flag": "🇮🇩",
+        "name": "Indonesia",
+        "label_arabic_text": "Teks Arab",
+        "label_meaning": "Makna dalam bahasa Indonesia",
+        "label_repeat": "Pengulangan",
+        "label_source": "Sumber",
+        "missing": "Makna dalam bahasa ini sedang ditambahkan.",
+        "morning_title": "🌅 Dzikir pagi",
+        "evening_title": "🌙 Dzikir petang",
+        "dhikr_word": "Dzikir",
+        "done_morning": "✅ <b>Bagus.</b>\n\nAnda telah menyelesaikan dzikir pagi.",
+        "done_evening": "✅ <b>Bagus.</b>\n\nAnda telah menyelesaikan dzikir petang.",
+        "reminder_morning": "🌅 <b>Pengingat dzikir pagi</b>\n\nMulailah membaca dzikir pagi sekarang.",
+        "reminder_evening": "🌙 <b>Pengingat dzikir petang</b>\n\nMulailah membaca dzikir petang sekarang.",
+        "start_morning_button": "🌅 Mulai dzikir pagi",
+        "start_evening_button": "🌙 Mulai dzikir petang",
+    },
+    "ur": {
+        "flag": "🇺🇷",
+        "name": "اردو",
+        "label_arabic_text": "عربی متن",
+        "label_meaning": "اردو میں معنی",
+        "label_repeat": "تکرار",
+        "label_source": "ماخذ",
+        "missing": "اس زبان میں معنی شامل کیے جا رہے ہیں۔",
+        "morning_title": "🌅 صبح کے اذکار",
+        "evening_title": "🌙 شام کے اذکار",
+        "dhikr_word": "ذکر",
+        "done_morning": "✅ <b>بہت خوب۔</b>\n\nآپ نے صبح کے اذکار مکمل کر لیے۔",
+        "done_evening": "✅ <b>بہت خوب۔</b>\n\nآپ نے شام کے اذکار مکمل کر لیے۔",
+        "reminder_morning": "🌅 <b>صبح کے اذکار کی یاد دہانی</b>\n\nاب صبح کے اذکار پڑھنا شروع کریں۔",
+        "reminder_evening": "🌙 <b>شام کے اذکار کی یاد دہانی</b>\n\nاب شام کے اذکار پڑھنا شروع کریں۔",
+        "start_morning_button": "🌅 صبح کے اذکار شروع کریں",
+        "start_evening_button": "🌙 شام کے اذکار شروع کریں",
+    },
+    "hi": {
+        "flag": "🇮🇳",
+        "name": "हिन्दी",
+        "label_arabic_text": "अरबी पाठ",
+        "label_meaning": "हिन्दी में अर्थ",
+        "label_repeat": "दोहराव",
+        "label_source": "स्रोत",
+        "missing": "इस भाषा में अर्थ जोड़ा जा रहा है।",
+        "morning_title": "🌅 सुबह के अज़कार",
+        "evening_title": "🌙 शाम के अज़कार",
+        "dhikr_word": "ज़िक्र",
+        "done_morning": "✅ <b>बहुत अच्छा।</b>\n\nआपने सुबह के अज़कार पूरे कर लिए।",
+        "done_evening": "✅ <b>बहुत अच्छा।</b>\n\nआपने शाम के अज़कार पूरे कर लिए।",
+        "reminder_morning": "🌅 <b>सुबह के अज़कार की याद दिलाना</b>\n\nअब सुबह के अज़कार पढ़ना शुरू करें।",
+        "reminder_evening": "🌙 <b>शाम के अज़कार की याद दिलाना</b>\n\nअब शाम के अज़कार पढ़ना शुरू करें।",
+        "start_morning_button": "🌅 सुबह के अज़कार शुरू करें",
+        "start_evening_button": "🌙 शाम के अज़कार शुरू करें",
+    },
+}
 
 
-# ================== DATABASE ==================
+# =====================================================
+# Adhkar Data
+# Arabic is always shown.
+# "meanings" can be completed gradually.
+# =====================================================
+
+MORNING_ADHKAR = [
+    {
+        "ar": "أَصْـبَحْنا وَأَصْـبَحَ المُـلْكُ لله، والحَمْدُ لله، لا إلهَ إلاّ اللهُ وحدَهُ لا شريكَ له، لهُ المُـلْكُ ولهُ الحَمْـد، وهوَ على كلّ شيءٍ قدير.",
+        "repeat": {
+            "ar": "مرة واحدة",
+            "en": "Once",
+            "de": "Einmal",
+            "fr": "Une fois",
+            "es": "Una vez",
+            "tr": "Bir kez",
+            "id": "Sekali",
+            "ur": "ایک بار",
+            "hi": "एक बार",
+        },
+        "source": {
+            "ar": "من أذكار الصباح",
+            "en": "Morning adhkar",
+            "de": "Morgen-Adhkar",
+            "fr": "Adhkâr du matin",
+            "es": "Adhkar de la mañana",
+            "tr": "Sabah zikirleri",
+            "id": "Dzikir pagi",
+            "ur": "صبح کے اذکار",
+            "hi": "सुबह के अज़कार",
+        },
+        "meanings": {
+            "en": "We have entered the morning, and all dominion belongs to Allah. Praise belongs to Allah. There is no deity worthy of worship except Allah alone, with no partner. His is the dominion and His is the praise, and He has power over all things.",
+            "de": "Wir sind in den Morgen eingetreten, und die Herrschaft gehört Allah. Alles Lob gehört Allah. Es gibt keinen anbetungswürdigen Gott außer Allah allein, ohne Partner. Ihm gehört die Herrschaft und Ihm gehört das Lob, und Er hat Macht über alle Dinge.",
+            "fr": "Nous sommes entrés dans le matin, et toute la royauté appartient à Allah. La louange appartient à Allah. Nul ne mérite d’être adoré sauf Allah, seul, sans associé. À Lui appartient la royauté et à Lui appartient la louange, et Il est capable de toute chose.",
+            "es": "Hemos llegado a la mañana, y todo dominio pertenece a Allah. La alabanza pertenece a Allah. No hay divinidad digna de adoración excepto Allah, solo, sin asociado. Suyo es el dominio y Suya es la alabanza, y Él tiene poder sobre todas las cosas.",
+            "tr": "Sabaha ulaştık ve mülk Allah’ındır. Hamd Allah’adır. Allah’tan başka ibadete layık hiçbir ilah yoktur; O tektir, ortağı yoktur. Mülk O’nundur, hamd O’nadır ve O her şeye güç yetirendir.",
+            "id": "Kami memasuki waktu pagi, dan seluruh kerajaan adalah milik Allah. Segala puji bagi Allah. Tidak ada sesembahan yang berhak disembah selain Allah semata, tidak ada sekutu bagi-Nya. Milik-Nya kerajaan dan milik-Nya segala pujian, dan Dia Mahakuasa atas segala sesuatu.",
+            "ur": "ہم نے صبح کی اور بادشاہی اللہ ہی کے لیے ہے۔ تمام تعریف اللہ کے لیے ہے۔ اللہ کے سوا کوئی معبود برحق نہیں، وہ اکیلا ہے، اس کا کوئی شریک نہیں۔ بادشاہی اسی کی ہے، تعریف اسی کے لیے ہے، اور وہ ہر چیز پر قادر ہے۔",
+            "hi": "हमने सुबह की, और सारी बादशाही अल्लाह ही की है। सारी प्रशंसा अल्लाह के लिए है। अल्लाह के सिवा कोई सच्चा पूज्य नहीं, वह अकेला है, उसका कोई साझी नहीं। उसी की बादशाही है, उसी के लिए प्रशंसा है, और वह हर चीज़ पर शक्ति रखता है।",
+        },
+    },
+    {
+        "ar": "اللّهـمَّ بِكَ أَصْـبَحْنا، وَبِكَ أَمْسَيْـنا، وَبِكَ نَحْـيا، وَبِكَ نَمـوتُ، وَإِلَيْكَ النُّـشور.",
+        "repeat": {
+            "ar": "مرة واحدة",
+            "en": "Once",
+            "de": "Einmal",
+            "fr": "Une fois",
+            "es": "Una vez",
+            "tr": "Bir kez",
+            "id": "Sekali",
+            "ur": "ایک بار",
+            "hi": "एक बार",
+        },
+        "source": {
+            "ar": "من أذكار الصباح",
+            "en": "Morning adhkar",
+            "de": "Morgen-Adhkar",
+            "fr": "Adhkâr du matin",
+            "es": "Adhkar de la mañana",
+            "tr": "Sabah zikirleri",
+            "id": "Dzikir pagi",
+            "ur": "صبح کے اذکار",
+            "hi": "सुबह के अज़कार",
+        },
+        "meanings": {
+            "en": "O Allah, by You we enter the morning, by You we enter the evening, by You we live, by You we die, and to You is the resurrection.",
+            "de": "O Allah, durch Dich treten wir in den Morgen ein, durch Dich treten wir in den Abend ein, durch Dich leben wir, durch Dich sterben wir, und zu Dir ist die Auferstehung.",
+            "fr": "Ô Allah, c’est par Toi que nous entrons dans le matin, par Toi que nous entrons dans le soir, par Toi que nous vivons, par Toi que nous mourons, et vers Toi sera la résurrection.",
+            "es": "Oh Allah, por Ti entramos en la mañana, por Ti entramos en la tarde, por Ti vivimos, por Ti morimos, y hacia Ti será la resurrección.",
+            "tr": "Allah’ım, Seninle sabaha ulaştık, Seninle akşama ulaşırız, Seninle yaşarız, Seninle ölürüz ve diriliş Sanadır.",
+            "id": "Ya Allah, dengan-Mu kami memasuki pagi, dengan-Mu kami memasuki petang, dengan-Mu kami hidup, dengan-Mu kami mati, dan kepada-Mu kebangkitan.",
+            "ur": "اے اللہ! تیرے ہی ذریعے ہم نے صبح کی، تیرے ہی ذریعے ہم شام کرتے ہیں، تیرے ہی ذریعے ہم جیتے ہیں، تیرے ہی ذریعے ہم مرتے ہیں، اور تیری ہی طرف دوبارہ اٹھایا جانا ہے۔",
+            "hi": "ऐ अल्लाह! तेरे ही सहारे हमने सुबह की, तेरे ही सहारे हम शाम करते हैं, तेरे ही सहारे हम जीते हैं, तेरे ही सहारे हम मरते हैं, और तेरी ही ओर उठाया जाना है।",
+        },
+    },
+    {
+        "ar": "اللّهـمَّ أَنْتَ رَبِّـي لا إلهَ إلاّ أَنْتَ، خَلَقْتَنـي وأنا عَبْـدُك، وأنا على عَهْـدِكَ ووَعْـدِكَ ما استطعتُ، أعوذُ بكَ مِنْ شَرِّ ما صَنَعْت، أبوءُ لكَ بنِعْمَتِكَ عليَّ، وأبوءُ بذَنْـبي، فاغْفِـرْ لي، فإنّهُ لا يَغْفِـرُ الذُّنوبَ إلاّ أنت.",
+        "repeat": {"ar": "مرة واحدة"},
+        "source": {"ar": "سيد الاستغفار"},
+        "meanings": {
+            "en": "O Allah, You are my Lord. There is no deity worthy of worship except You. You created me and I am Your servant. I remain upon Your covenant and promise as much as I am able. I seek refuge in You from the evil of what I have done. I acknowledge Your favor upon me and I acknowledge my sin, so forgive me, for none forgives sins except You.",
+            "de": "O Allah, Du bist mein Herr. Es gibt keinen anbetungswürdigen Gott außer Dir. Du hast mich erschaffen und ich bin Dein Diener. Ich halte mich, soweit ich kann, an Deinen Bund und Dein Versprechen. Ich suche Zuflucht bei Dir vor dem Übel dessen, was ich getan habe. Ich erkenne Deine Gnade an mir an und erkenne meine Sünde an, so vergib mir, denn niemand vergibt Sünden außer Dir.",
+        },
+    },
+    {
+        "ar": "رَضيتُ باللهِ ربًّا، وبالإسلامِ دينًا، وبمحمّدٍ ﷺ نبيًّا.",
+        "repeat": {"ar": "ثلاث مرات"},
+        "source": {"ar": "من أذكار الصباح والمساء"},
+        "meanings": {
+            "en": "I am pleased with Allah as my Lord, Islam as my religion, and Muhammad ﷺ as my Prophet.",
+            "de": "Ich bin zufrieden mit Allah als meinem Herrn, mit dem Islam als meiner Religion und mit Muhammad ﷺ als meinem Propheten.",
+        },
+    },
+    {
+        "ar": "حَسْبِيَ اللهُ لا إلهَ إلاّ هو، عليهِ توكّلتُ، وهوَ ربُّ العرشِ العظيم.",
+        "repeat": {"ar": "سبع مرات"},
+        "source": {"ar": "من أذكار الصباح والمساء"},
+        "meanings": {
+            "en": "Allah is sufficient for me. There is no deity worthy of worship except Him. Upon Him I rely, and He is the Lord of the Mighty Throne.",
+            "de": "Allah genügt mir. Es gibt keinen anbetungswürdigen Gott außer Ihm. Auf Ihn vertraue ich, und Er ist der Herr des gewaltigen Thrones.",
+        },
+    },
+    {
+        "ar": "بِسْمِ اللهِ الذي لا يَضُرُّ مع اسمِهِ شيءٌ في الأرضِ ولا في السماءِ، وهوَ السميعُ العليم.",
+        "repeat": {"ar": "ثلاث مرات"},
+        "source": {"ar": "من أذكار الصباح والمساء"},
+        "meanings": {
+            "en": "In the name of Allah, with whose name nothing on earth or in the heavens can cause harm, and He is the All-Hearing, the All-Knowing.",
+            "de": "Im Namen Allahs, mit dessen Namen nichts auf der Erde und nichts im Himmel Schaden zufügen kann. Er ist der Allhörende, der Allwissende.",
+        },
+    },
+    {
+        "ar": "اللّهـمَّ عافِني في بَدَني، اللّهـمَّ عافِني في سَمْعي، اللّهـمَّ عافِني في بَصَري، لا إلهَ إلاّ أنت.",
+        "repeat": {"ar": "ثلاث مرات"},
+        "source": {"ar": "من أذكار الصباح والمساء"},
+        "meanings": {
+            "en": "O Allah, grant me well-being in my body, my hearing, and my sight. There is no deity worthy of worship except You.",
+        },
+    },
+    {
+        "ar": "اللّهـمَّ إنّي أعوذُ بكَ مِنَ الكُفْرِ والفَقْر، وأعوذُ بكَ مِنْ عذابِ القَبْر، لا إلهَ إلاّ أنت.",
+        "repeat": {"ar": "ثلاث مرات"},
+        "source": {"ar": "من أذكار الصباح والمساء"},
+        "meanings": {
+            "en": "O Allah, I seek refuge in You from disbelief and poverty, and I seek refuge in You from the punishment of the grave. There is no deity worthy of worship except You.",
+        },
+    },
+    {
+        "ar": "اللّهـمَّ إنّي أسألُكَ العفوَ والعافيةَ في الدنيا والآخرة.",
+        "repeat": {"ar": "مرة واحدة"},
+        "source": {"ar": "من أذكار الصباح والمساء"},
+        "meanings": {
+            "en": "O Allah, I ask You for pardon and well-being in this world and the Hereafter.",
+        },
+    },
+    {
+        "ar": "اللّهـمَّ إنّي أسألُكَ العفوَ والعافيةَ في ديني ودنيايَ وأهلي ومالي.",
+        "repeat": {"ar": "مرة واحدة"},
+        "source": {"ar": "من أذكار الصباح والمساء"},
+        "meanings": {
+            "en": "O Allah, I ask You for pardon and well-being in my religion, my worldly life, my family, and my wealth.",
+        },
+    },
+    {
+        "ar": "اللّهـمَّ استُرْ عوراتي، وآمِنْ رَوْعاتي.",
+        "repeat": {"ar": "مرة واحدة"},
+        "source": {"ar": "من أذكار الصباح والمساء"},
+        "meanings": {
+            "en": "O Allah, conceal my faults and calm my fears.",
+        },
+    },
+    {
+        "ar": "اللّهـمَّ احفظني مِنْ بينِ يديَّ، ومِنْ خَلْفي، وعن يميني، وعن شمالي، ومِنْ فوقي، وأعوذُ بعظمتِكَ أن أُغتالَ مِنْ تحتي.",
+        "repeat": {"ar": "مرة واحدة"},
+        "source": {"ar": "من أذكار الصباح والمساء"},
+        "meanings": {
+            "en": "O Allah, protect me from in front of me, behind me, my right, my left, and above me. I seek refuge in Your greatness from being taken unaware from beneath me.",
+        },
+    },
+    {
+        "ar": "يا حيُّ يا قيّومُ، برحمتِكَ أستغيث، أصلِحْ لي شأني كلَّه، ولا تَكِلْني إلى نفسي طَرْفَةَ عين.",
+        "repeat": {"ar": "مرة واحدة"},
+        "source": {"ar": "من أذكار الصباح والمساء"},
+        "meanings": {
+            "en": "O Ever-Living, O Sustainer, by Your mercy I seek help. Rectify all of my affairs and do not leave me to myself even for the blink of an eye.",
+        },
+    },
+    {
+        "ar": "أَصْبَحْنا على فِطْرَةِ الإسلام، وعلى كلمةِ الإخلاص، وعلى دينِ نبيّنا محمدٍ ﷺ، وعلى مِلّةِ أبينا إبراهيمَ حنيفًا مسلمًا وما كانَ مِنَ المشركين.",
+        "repeat": {"ar": "مرة واحدة"},
+        "source": {"ar": "من أذكار الصباح"},
+        "meanings": {
+            "en": "We have entered the morning upon the natural way of Islam, the word of sincerity, the religion of our Prophet Muhammad ﷺ, and the way of our father Ibrahim.",
+        },
+    },
+    {
+        "ar": "سُبْحانَ اللهِ وبحمدِه.",
+        "repeat": {"ar": "مائة مرة"},
+        "source": {"ar": "من أذكار الصباح والمساء"},
+        "meanings": {
+            "en": "Glory and praise be to Allah.",
+            "fr": "Gloire et louange à Allah.",
+            "es": "Gloria y alabanza sean para Allah.",
+            "tr": "Allah’ı tesbih ederim ve O’na hamd ederim.",
+            "id": "Mahasuci Allah dan segala puji bagi-Nya.",
+            "ur": "اللہ پاک ہے اور اسی کے لیے تعریف ہے۔",
+            "hi": "अल्लाह पाक है और सारी प्रशंसा उसी के लिए है।",
+        },
+    },
+    {
+        "ar": "لا إلهَ إلاّ اللهُ وحدَهُ لا شريكَ له، لهُ الملكُ ولهُ الحمدُ، وهوَ على كلّ شيءٍ قدير.",
+        "repeat": {"ar": "عشر مرات أو مائة مرة"},
+        "source": {"ar": "من أذكار الصباح والمساء"},
+        "meanings": {
+            "en": "There is no deity worthy of worship except Allah alone, with no partner. His is the dominion and His is the praise, and He has power over all things.",
+        },
+    },
+    {
+        "ar": "أستغفرُ اللهَ وأتوبُ إليه.",
+        "repeat": {"ar": "مائة مرة"},
+        "source": {"ar": "من الأذكار"},
+        "meanings": {
+            "en": "I seek Allah’s forgiveness and repent to Him.",
+            "fr": "Je demande pardon à Allah et je me repens à Lui.",
+            "es": "Pido perdón a Allah y me arrepiento ante Él.",
+            "tr": "Allah’tan bağışlanma dilerim ve O’na tövbe ederim.",
+            "id": "Aku memohon ampun kepada Allah dan bertaubat kepada-Nya.",
+            "ur": "میں اللہ سے بخشش طلب کرتا ہوں اور اسی کی طرف توبہ کرتا ہوں۔",
+            "hi": "मैं अल्लाह से क्षमा मांगता हूँ और उसी की ओर तौबा करता हूँ।",
+        },
+    },
+    {
+        "ar": "اللّهـمَّ صلِّ وسلّمْ على نبيّنا محمد.",
+        "repeat": {"ar": "عشر مرات"},
+        "source": {"ar": "من الأذكار المشروعة"},
+        "meanings": {
+            "en": "O Allah, send prayers and peace upon our Prophet Muhammad.",
+            "fr": "Ô Allah, accorde Tes prières et Ta paix à notre Prophète Muhammad.",
+            "es": "Oh Allah, concede bendiciones y paz a nuestro Profeta Muhammad.",
+            "tr": "Allah’ım, Peygamberimiz Muhammed’e salât ve selâm eyle.",
+            "id": "Ya Allah, limpahkan salawat dan salam kepada Nabi kami Muhammad.",
+            "ur": "اے اللہ! ہمارے نبی محمد پر درود و سلام بھیج۔",
+            "hi": "ऐ अल्लाह! हमारे नबी मुहम्मद पर दुरूद और सलाम भेज।",
+        },
+    },
+]
+
+EVENING_ADHKAR = [item.copy() for item in MORNING_ADHKAR]
+
+EVENING_ADHKAR[0] = {
+    "ar": "أَمْسَيْنا وأَمْسَى المُـلْكُ لله، والحَمْدُ لله، لا إلهَ إلاّ اللهُ وحدَهُ لا شريكَ له، لهُ المُـلْكُ ولهُ الحَمْـد، وهوَ على كلّ شيءٍ قدير.",
+    "repeat": MORNING_ADHKAR[0]["repeat"],
+    "source": {
+        "ar": "من أذكار المساء",
+        "en": "Evening adhkar",
+        "de": "Abend-Adhkar",
+        "fr": "Adhkâr du soir",
+        "es": "Adhkar de la tarde",
+        "tr": "Akşam zikirleri",
+        "id": "Dzikir petang",
+        "ur": "شام کے اذکار",
+        "hi": "शाम के अज़कार",
+    },
+    "meanings": {
+        "en": "We have entered the evening, and all dominion belongs to Allah. Praise belongs to Allah. There is no deity worthy of worship except Allah alone, with no partner. His is the dominion and His is the praise, and He has power over all things.",
+        "de": "Wir sind in den Abend eingetreten, und die Herrschaft gehört Allah. Alles Lob gehört Allah. Es gibt keinen anbetungswürdigen Gott außer Allah allein, ohne Partner. Ihm gehört die Herrschaft und Ihm gehört das Lob, und Er hat Macht über alle Dinge.",
+        "fr": "Nous sommes entrés dans le soir, et toute la royauté appartient à Allah. La louange appartient à Allah. Nul ne mérite d’être adoré sauf Allah, seul, sans associé.",
+        "es": "Hemos llegado a la tarde, y todo dominio pertenece a Allah. La alabanza pertenece a Allah. No hay divinidad digna de adoración excepto Allah, solo, sin asociado.",
+        "tr": "Akşama ulaştık ve mülk Allah’ındır. Hamd Allah’adır. Allah’tan başka ibadete layık hiçbir ilah yoktur; O tektir, ortağı yoktur.",
+        "id": "Kami memasuki waktu petang, dan seluruh kerajaan adalah milik Allah. Segala puji bagi Allah. Tidak ada sesembahan yang berhak disembah selain Allah semata.",
+        "ur": "ہم نے شام کی اور بادشاہی اللہ ہی کے لیے ہے۔ تمام تعریف اللہ کے لیے ہے۔ اللہ کے سوا کوئی معبود برحق نہیں۔",
+        "hi": "हमने शाम की, और सारी बादशाही अल्लाह ही की है। सारी प्रशंसा अल्लाह के लिए है। अल्लाह के सिवा कोई सच्चा पूज्य नहीं।",
+    },
+}
+
+EVENING_ADHKAR[1] = {
+    "ar": "اللّهـمَّ بِكَ أَمْسَيْنا، وبِكَ أَصْبَحْنا، وبِكَ نَحْيا، وبِكَ نَموتُ، وإليكَ المصير.",
+    "repeat": MORNING_ADHKAR[1]["repeat"],
+    "source": EVENING_ADHKAR[0]["source"],
+    "meanings": {
+        "en": "O Allah, by You we enter the evening, by You we enter the morning, by You we live, by You we die, and to You is the return.",
+        "de": "O Allah, durch Dich treten wir in den Abend ein, durch Dich treten wir in den Morgen ein, durch Dich leben wir, durch Dich sterben wir, und zu Dir ist die Rückkehr.",
+        "fr": "Ô Allah, c’est par Toi que nous entrons dans le soir, par Toi que nous entrons dans le matin, par Toi que nous vivons, par Toi que nous mourons, et vers Toi est le retour.",
+        "es": "Oh Allah, por Ti entramos en la tarde, por Ti entramos en la mañana, por Ti vivimos, por Ti morimos, y hacia Ti es el retorno.",
+        "tr": "Allah’ım, Seninle akşama ulaştık, Seninle sabaha ulaşırız, Seninle yaşarız, Seninle ölürüz ve dönüş Sanadır.",
+        "id": "Ya Allah, dengan-Mu kami memasuki petang, dengan-Mu kami memasuki pagi, dengan-Mu kami hidup, dengan-Mu kami mati, dan kepada-Mu tempat kembali.",
+        "ur": "اے اللہ! تیرے ہی ذریعے ہم نے شام کی، تیرے ہی ذریعے ہم صبح کرتے ہیں، تیرے ہی ذریعے ہم جیتے ہیں، تیرے ہی ذریعے ہم مرتے ہیں، اور تیری ہی طرف لوٹنا ہے۔",
+        "hi": "ऐ अल्लाह! तेरे ही सहारे हमने शाम की, तेरे ही सहारे हम सुबह करते हैं, तेरे ही सहारे हम जीते हैं, तेरे ही सहारे हम मरते हैं, और तेरी ही ओर लौटना है।",
+    },
+}
+
+
+# =====================================================
+# Database
+# =====================================================
 
 def init_db():
     conn = sqlite3.connect(DB)
@@ -411,17 +575,6 @@ def init_db():
     )
     """)
 
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS skipped_posts(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        post_type TEXT NOT NULL,
-        reason TEXT NOT NULL,
-        skipped_at INTEGER NOT NULL,
-        hour INTEGER NOT NULL,
-        source TEXT DEFAULT 'auto'
-    )
-    """)
-
     c.execute("PRAGMA table_info(users)")
     user_cols = [row[1] for row in c.fetchall()]
     if "adhkar_lang" not in user_cols:
@@ -444,6 +597,15 @@ def add_user(user_id):
     conn.close()
 
 
+def users_count():
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM users")
+    count = c.fetchone()[0]
+    conn.close()
+    return count
+
+
 def get_adhkar_lang(user_id):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -454,10 +616,16 @@ def get_adhkar_lang(user_id):
     if not row or not row[0]:
         return "ar"
 
+    if row[0] not in ADHKAR_LANGUAGES:
+        return "ar"
+
     return row[0]
 
 
 def set_adhkar_lang(user_id, lang):
+    if lang not in ADHKAR_LANGUAGES:
+        lang = "ar"
+
     conn = sqlite3.connect(DB)
     c = conn.cursor()
     c.execute("UPDATE users SET adhkar_lang=? WHERE user_id=?", (lang, user_id))
@@ -465,19 +633,13 @@ def set_adhkar_lang(user_id, lang):
     conn.close()
 
 
-def users_count():
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("SELECT COUNT(*) FROM users")
-    count = c.fetchone()[0]
-    conn.close()
-    return count
-
-
 def save_hadith(user_id, text):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-    c.execute("INSERT INTO saved(user_id, text, created_at) VALUES (?, ?, ?)", (user_id, text, now_timestamp()))
+    c.execute(
+        "INSERT INTO saved(user_id, text, created_at) VALUES (?, ?, ?)",
+        (user_id, text, now_timestamp())
+    )
     conn.commit()
     conn.close()
 
@@ -494,7 +656,10 @@ def saved_count():
 def get_saved_hadiths(user_id, limit=5):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-    c.execute("SELECT text, created_at FROM saved WHERE user_id=? ORDER BY created_at DESC LIMIT ?", (user_id, limit))
+    c.execute(
+        "SELECT text, created_at FROM saved WHERE user_id=? ORDER BY created_at DESC LIMIT ?",
+        (user_id, limit)
+    )
     rows = c.fetchall()
     conn.close()
     return rows
@@ -510,9 +675,15 @@ def set_adhkar_reminder(user_id, chat_id, kind, enabled):
     """, (user_id, chat_id, now_timestamp()))
 
     if kind == "morning":
-        c.execute("UPDATE adhkar_reminders SET morning=?, chat_id=? WHERE user_id=?", (1 if enabled else 0, chat_id, user_id))
+        c.execute(
+            "UPDATE adhkar_reminders SET morning=?, chat_id=? WHERE user_id=?",
+            (1 if enabled else 0, chat_id, user_id)
+        )
     elif kind == "evening":
-        c.execute("UPDATE adhkar_reminders SET evening=?, chat_id=? WHERE user_id=?", (1 if enabled else 0, chat_id, user_id))
+        c.execute(
+            "UPDATE adhkar_reminders SET evening=?, chat_id=? WHERE user_id=?",
+            (1 if enabled else 0, chat_id, user_id)
+        )
 
     conn.commit()
     conn.close()
@@ -575,7 +746,9 @@ def channel_posts_count_by_type(post_type):
     return count
 
 
-# ================== HADITH / QURAN API ==================
+# =====================================================
+# Quran / Hadith APIs
+# =====================================================
 
 def get_random_hadith_id():
     response = requests.get(
@@ -591,7 +764,11 @@ def get_random_hadith_id():
 
 
 def get_hadith_by_id(hadith_id, lang):
-    response = requests.get(HADEETH_API, params={"language": lang, "id": hadith_id}, timeout=15)
+    response = requests.get(
+        HADEETH_API,
+        params={"language": lang, "id": hadith_id},
+        timeout=15
+    )
     response.raise_for_status()
     data = response.json()
     return {
@@ -733,22 +910,46 @@ def mixed_channel_message():
 """, f"ayah:{ayah_ref}|hadith:{hid}"
 
 
-# ================== ADHKAR UI ==================
+# =====================================================
+# UI Menus
+# =====================================================
 
-def lang_name(lang):
-    if lang == "en":
-        return "English"
-    if lang == "de":
-        return "Deutsch"
-    return "العربية"
+def language_display(lang):
+    item = ADHKAR_LANGUAGES.get(lang, ADHKAR_LANGUAGES["ar"])
+    return f"{item['flag']} {item['name']}"
+
+
+def main_menu(user_id):
+    buttons = [
+        [InlineKeyboardButton("📖 القرآن", callback_data="quran")],
+        [InlineKeyboardButton("🕊️ الأحاديث", callback_data="hadith")],
+        [InlineKeyboardButton("🤲 الأذكار", callback_data="adhkar_menu")],
+        [InlineKeyboardButton("ℹ️ عن المشروع", callback_data="about")],
+        [InlineKeyboardButton("🌐 القناة الرسمية", url="https://t.me/UMMAHBRIDGE")]
+    ]
+
+    if is_admin(user_id):
+        buttons.append([InlineKeyboardButton("🛠️ لوحة الإدارة", callback_data="admin")])
+
+    return InlineKeyboardMarkup(buttons)
+
+
+def hadith_menu():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🔄 حديث عشوائي", callback_data="random")],
+        [InlineKeyboardButton("❤️ حفظ الحديث", callback_data="save")],
+        [InlineKeyboardButton("📚 محفوظاتي", callback_data="saved")],
+        [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")]
+    ])
 
 
 def adhkar_main_menu(user_id):
     lang = get_adhkar_lang(user_id)
+
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("🌅 أذكار الصباح", callback_data="adhkar_morning_0")],
         [InlineKeyboardButton("🌙 أذكار المساء", callback_data="adhkar_evening_0")],
-        [InlineKeyboardButton(f"🌍 لغة الأذكار: {lang_name(lang)}", callback_data="adhkar_lang_menu")],
+        [InlineKeyboardButton(f"🌍 لغة الأذكار: {language_display(lang)}", callback_data="adhkar_lang_menu")],
         [InlineKeyboardButton("⏰ تذكير الأذكار", callback_data="adhkar_reminders")],
         [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")]
     ])
@@ -756,15 +957,32 @@ def adhkar_main_menu(user_id):
 
 def adhkar_lang_menu():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🇸🇦 العربية", callback_data="adhkar_lang_ar")],
-        [InlineKeyboardButton("🇬🇧 English", callback_data="adhkar_lang_en")],
-        [InlineKeyboardButton("🇩🇪 Deutsch", callback_data="adhkar_lang_de")],
+        [
+            InlineKeyboardButton("🇸🇦 العربية", callback_data="adhkar_lang_ar"),
+            InlineKeyboardButton("🇬🇧 English", callback_data="adhkar_lang_en"),
+        ],
+        [
+            InlineKeyboardButton("🇩🇪 Deutsch", callback_data="adhkar_lang_de"),
+            InlineKeyboardButton("🇫🇷 Français", callback_data="adhkar_lang_fr"),
+        ],
+        [
+            InlineKeyboardButton("🇪🇸 Español", callback_data="adhkar_lang_es"),
+            InlineKeyboardButton("🇹🇷 Türkçe", callback_data="adhkar_lang_tr"),
+        ],
+        [
+            InlineKeyboardButton("🇮🇩 Indonesia", callback_data="adhkar_lang_id"),
+            InlineKeyboardButton("🇺🇷 اردو", callback_data="adhkar_lang_ur"),
+        ],
+        [
+            InlineKeyboardButton("🇮🇳 हिन्दी", callback_data="adhkar_lang_hi"),
+        ],
         [InlineKeyboardButton("⬅️ رجوع للأذكار", callback_data="adhkar_menu")]
     ])
 
 
 def adhkar_reminder_menu(user_id):
     morning, evening = get_adhkar_reminder_status(user_id)
+
     morning_status = "✅ مفعل" if morning else "❌ غير مفعل"
     evening_status = "✅ مفعل" if evening else "❌ غير مفعل"
 
@@ -792,103 +1010,8 @@ def adhkar_navigation(kind, index, total):
     buttons.append([InlineKeyboardButton("✅ أنهيت الأذكار", callback_data=f"adhkar_done_{kind}")])
     buttons.append([InlineKeyboardButton("⬅️ رجوع للأذكار", callback_data="adhkar_menu")])
     buttons.append([InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")])
-    return InlineKeyboardMarkup(buttons)
-
-
-def render_adhkar(kind, index, lang):
-    adhkar_list = MORNING_ADHKAR if kind == "morning" else EVENING_ADHKAR
-    total = len(adhkar_list)
-
-    if index < 0:
-        index = 0
-    if index >= total:
-        index = total - 1
-
-    item = adhkar_list[index]
-
-    if kind == "morning":
-        title_ar = "🌅 أذكار الصباح"
-        title_en = "🌅 Morning Adhkar"
-        title_de = "🌅 Morgen-Adhkar"
-    else:
-        title_ar = "🌙 أذكار المساء"
-        title_en = "🌙 Evening Adhkar"
-        title_de = "🌙 Abend-Adhkar"
-
-    if lang == "en":
-        text = f"""{title_en}
-
-<b>Dhikr {index + 1}/{total}</b>
-{line()}
-<b>Arabic text:</b>
-
-{esc(item["ar"])}
-
-{line()}
-<b>Meaning in English:</b>
-
-{esc(item["en"])}
-
-{line()}
-🔁 <b>Repeat:</b> {esc(item["repeat_en"])}
-📚 <b>Source:</b> {esc(item["source_en"])}
-"""
-    elif lang == "de":
-        text = f"""{title_de}
-
-<b>Dhikr {index + 1}/{total}</b>
-{line()}
-<b>Arabischer Text:</b>
-
-{esc(item["ar"])}
-
-{line()}
-<b>Bedeutung auf Deutsch:</b>
-
-{esc(item["de"])}
-
-{line()}
-🔁 <b>Wiederholung:</b> {esc(item["repeat_de"])}
-📚 <b>Quelle:</b> {esc(item["source_de"])}
-"""
-    else:
-        text = f"""{title_ar}
-
-<b>الذكر {index + 1}/{total}</b>
-{line()}
-{esc(item["ar"])}
-{line()}
-🔁 <b>التكرار:</b> {esc(item["repeat_ar"])}
-📚 <b>المصدر:</b> {esc(item["source_ar"])}
-"""
-
-    return text, adhkar_navigation(kind, index, total)
-
-
-# ================== MENUS ==================
-
-def main_menu(user_id):
-    buttons = [
-        [InlineKeyboardButton("📖 القرآن", callback_data="quran")],
-        [InlineKeyboardButton("🕊️ الأحاديث", callback_data="hadith")],
-        [InlineKeyboardButton("🤲 الأذكار", callback_data="adhkar_menu")],
-        [InlineKeyboardButton("ℹ️ عن المشروع", callback_data="about")],
-        [InlineKeyboardButton("🌐 القناة الرسمية", url="https://t.me/UMMAHBRIDGE")]
-    ]
-
-    if is_admin(user_id):
-        buttons.append([InlineKeyboardButton("🛠️ لوحة الإدارة", callback_data="admin")])
 
     return InlineKeyboardMarkup(buttons)
-
-
-def hadith_menu():
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🔄 حديث عشوائي", callback_data="random")],
-        [InlineKeyboardButton("❤️ حفظ الحديث", callback_data="save")],
-        [InlineKeyboardButton("📚 محفوظاتي", callback_data="saved")],
-        [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")]
-    ])
 
 
 def admin_menu():
@@ -903,7 +1026,9 @@ def admin_menu():
 
 
 def back():
-    return InlineKeyboardMarkup([[InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")]])
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")]
+    ])
 
 
 def admin_back():
@@ -913,7 +1038,84 @@ def admin_back():
     ])
 
 
-# ================== SAFE SEND ==================
+# =====================================================
+# Adhkar Render
+# =====================================================
+
+def get_localized_value(item, field, lang):
+    data = item.get(field, {})
+    if lang in data:
+        return data[lang]
+    if "en" in data and lang != "ar":
+        return data["en"]
+    return data.get("ar", "")
+
+
+def get_meaning(item, lang):
+    if lang == "ar":
+        return ""
+
+    meanings = item.get("meanings", {})
+    if lang in meanings:
+        return meanings[lang]
+
+    return ADHKAR_LANGUAGES.get(lang, ADHKAR_LANGUAGES["en"])["missing"]
+
+
+def render_adhkar(kind, index, lang):
+    lang_pack = ADHKAR_LANGUAGES.get(lang, ADHKAR_LANGUAGES["ar"])
+    adhkar_list = MORNING_ADHKAR if kind == "morning" else EVENING_ADHKAR
+
+    total = len(adhkar_list)
+
+    if index < 0:
+        index = 0
+
+    if index >= total:
+        index = total - 1
+
+    item = adhkar_list[index]
+    title = lang_pack["morning_title"] if kind == "morning" else lang_pack["evening_title"]
+
+    repeat_text = get_localized_value(item, "repeat", lang)
+    source_text = get_localized_value(item, "source", lang)
+    meaning_text = get_meaning(item, lang)
+
+    if lang == "ar":
+        text = f"""{title}
+
+<b>{lang_pack["dhikr_word"]} {index + 1}/{total}</b>
+{line()}
+{esc(item["ar"])}
+{line()}
+🔁 <b>{esc(lang_pack["label_repeat"])}:</b> {esc(repeat_text)}
+📚 <b>{esc(lang_pack["label_source"])}:</b> {esc(source_text)}
+"""
+    else:
+        text = f"""{title}
+
+<b>{esc(lang_pack["dhikr_word"])} {index + 1}/{total}</b>
+{line()}
+<b>{esc(lang_pack["label_arabic_text"])}:</b>
+
+{esc(item["ar"])}
+
+{line()}
+<b>{esc(lang_pack["label_meaning"])}:</b>
+
+{esc(meaning_text)}
+
+{line()}
+🔁 <b>{esc(lang_pack["label_repeat"])}:</b> {esc(repeat_text)}
+📚 <b>{esc(lang_pack["label_source"])}:</b> {esc(source_text)}
+"""
+
+    return text, adhkar_navigation(kind, index, total)
+
+
+# =====================================================
+# Send Helpers
+# =====================================================
 
 async def safe_edit(q, text, markup=None):
     try:
@@ -942,7 +1144,9 @@ async def send_channel_message(context, text, post_type, item_id, source):
     log_channel_post(post_type, item_id, source)
 
 
-# ================== COMMANDS ==================
+# =====================================================
+# Commands
+# =====================================================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -972,6 +1176,7 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def test_channel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
+
     if not is_admin(user_id):
         await update.message.reply_text("❌ هذا الأمر خاص بالمشرف فقط.")
         return
@@ -981,41 +1186,53 @@ async def test_channel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ تم نشر رسالة اختبار في القناة.")
 
 
-# ================== AUTO POSTS ==================
+# =====================================================
+# Automatic Channel Posts
+# =====================================================
 
 async def auto_publish_hadith(context: ContextTypes.DEFAULT_TYPE):
-    text, hid = hadith_channel_message()
-    await send_channel_message(context, text, "hadith", hid, "auto_hadith")
+    try:
+        text, hid = hadith_channel_message()
+        await send_channel_message(context, text, "hadith", hid, "auto_hadith")
+        print("✅ Auto hadith sent.")
+    except Exception as e:
+        print(f"❌ Auto hadith error: {e}")
 
 
 async def auto_publish_quran(context: ContextTypes.DEFAULT_TYPE):
-    text, ayah_ref = quran_channel_message()
-    await send_channel_message(context, text, "quran", ayah_ref, "auto_quran")
+    try:
+        text, ayah_ref = quran_channel_message()
+        await send_channel_message(context, text, "quran", ayah_ref, "auto_quran")
+        print("✅ Auto quran sent.")
+    except Exception as e:
+        print(f"❌ Auto quran error: {e}")
 
 
 async def auto_publish_mixed(context: ContextTypes.DEFAULT_TYPE):
-    text, item_id = mixed_channel_message()
-    await send_channel_message(context, text, "mixed", item_id, "auto_mixed")
+    try:
+        text, item_id = mixed_channel_message()
+        await send_channel_message(context, text, "mixed", item_id, "auto_mixed")
+        print("✅ Auto mixed sent.")
+    except Exception as e:
+        print(f"❌ Auto mixed error: {e}")
 
+
+# =====================================================
+# Adhkar Reminders
+# =====================================================
 
 async def send_morning_adhkar_reminders(context: ContextTypes.DEFAULT_TYPE):
     for user_id, chat_id in get_adhkar_subscribers("morning"):
         lang = get_adhkar_lang(user_id)
-        if lang == "en":
-            text = "🌅 <b>Morning Adhkar Reminder</b>\n\nStart reading your morning adhkar now."
-            button = "🌅 Start Morning Adhkar"
-        elif lang == "de":
-            text = "🌅 <b>Erinnerung an Morgen-Adhkar</b>\n\nBeginne jetzt mit deinen Morgen-Adhkar."
-            button = "🌅 Morgen-Adhkar starten"
-        else:
-            text = "🌅 <b>تذكير أذكار الصباح</b>\n\nابدأ بقراءة أذكار الصباح الآن."
-            button = "🌅 ابدأ أذكار الصباح"
+        lang_pack = ADHKAR_LANGUAGES.get(lang, ADHKAR_LANGUAGES["ar"])
 
         try:
             await context.bot.send_message(
                 chat_id=chat_id,
-                text=text,
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(button, callback_data="adhkar_morning_0")]]),
+                text=lang_pack["reminder_morning"],
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton(lang_pack["start_morning_button"], callback_data="adhkar_morning_0")]
+                ]),
                 parse_mode="HTML"
             )
         except Exception as e:
@@ -1025,28 +1242,24 @@ async def send_morning_adhkar_reminders(context: ContextTypes.DEFAULT_TYPE):
 async def send_evening_adhkar_reminders(context: ContextTypes.DEFAULT_TYPE):
     for user_id, chat_id in get_adhkar_subscribers("evening"):
         lang = get_adhkar_lang(user_id)
-        if lang == "en":
-            text = "🌙 <b>Evening Adhkar Reminder</b>\n\nStart reading your evening adhkar now."
-            button = "🌙 Start Evening Adhkar"
-        elif lang == "de":
-            text = "🌙 <b>Erinnerung an Abend-Adhkar</b>\n\nBeginne jetzt mit deinen Abend-Adhkar."
-            button = "🌙 Abend-Adhkar starten"
-        else:
-            text = "🌙 <b>تذكير أذكار المساء</b>\n\nابدأ بقراءة أذكار المساء الآن."
-            button = "🌙 ابدأ أذكار المساء"
+        lang_pack = ADHKAR_LANGUAGES.get(lang, ADHKAR_LANGUAGES["ar"])
 
         try:
             await context.bot.send_message(
                 chat_id=chat_id,
-                text=text,
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(button, callback_data="adhkar_evening_0")]]),
+                text=lang_pack["reminder_evening"],
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton(lang_pack["start_evening_button"], callback_data="adhkar_evening_0")]
+                ]),
                 parse_mode="HTML"
             )
         except Exception as e:
             print(f"Evening adhkar reminder error for {user_id}: {e}")
 
 
-# ================== CALLBACK HANDLER ==================
+# =====================================================
+# Callback Handler
+# =====================================================
 
 async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
@@ -1059,7 +1272,11 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = q.data
 
     if data == "home":
-        await safe_edit(q, "🌉 <b>Ummah Bridge</b>\n\nاختر من القائمة:", main_menu(user_id))
+        await safe_edit(
+            q,
+            "🌉 <b>Ummah Bridge</b>\n\nاختر من القائمة:",
+            main_menu(user_id)
+        )
 
     elif data == "quran":
         try:
@@ -1072,6 +1289,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 text += f"{esc(a['text'])}\n"
 
             await safe_edit(q, text, back())
+
         except Exception as e:
             await safe_edit(q, f"❌ خطأ في جلب القرآن:\n<code>{esc(e)}</code>", back())
 
@@ -1106,9 +1324,10 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data == "adhkar_menu":
         lang = get_adhkar_lang(user_id)
+
         await safe_edit(
             q,
-            f"🤲 <b>قسم الأذكار</b>\n\n🌍 اللغة الحالية: <b>{esc(lang_name(lang))}</b>\n\nاختر ما تريد قراءته:",
+            f"🤲 <b>قسم الأذكار</b>\n\n🌍 اللغة الحالية: <b>{esc(language_display(lang))}</b>\n\nاختر ما تريد قراءته:",
             adhkar_main_menu(user_id)
         )
 
@@ -1118,9 +1337,10 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data.startswith("adhkar_lang_"):
         lang = data.split("_")[-1]
         set_adhkar_lang(user_id, lang)
+
         await safe_edit(
             q,
-            f"✅ تم تغيير لغة الأذكار إلى: <b>{esc(lang_name(lang))}</b>",
+            f"✅ تم تغيير لغة الأذكار إلى: <b>{esc(language_display(lang))}</b>",
             adhkar_main_menu(user_id)
         )
 
@@ -1138,26 +1358,17 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data == "adhkar_done_morning":
         lang = get_adhkar_lang(user_id)
-        if lang == "en":
-            text = "✅ <b>Well done.</b>\n\nYou finished the morning adhkar."
-        elif lang == "de":
-            text = "✅ <b>Sehr gut.</b>\n\nDu hast die Morgen-Adhkar beendet."
-        else:
-            text = "✅ <b>أحسنت.</b>\n\nانتهيت من أذكار الصباح.\nنسأل الله أن يحفظك ويبارك يومك."
-        await safe_edit(q, text, adhkar_main_menu(user_id))
+        lang_pack = ADHKAR_LANGUAGES.get(lang, ADHKAR_LANGUAGES["ar"])
+        await safe_edit(q, lang_pack["done_morning"], adhkar_main_menu(user_id))
 
     elif data == "adhkar_done_evening":
         lang = get_adhkar_lang(user_id)
-        if lang == "en":
-            text = "✅ <b>Well done.</b>\n\nYou finished the evening adhkar."
-        elif lang == "de":
-            text = "✅ <b>Sehr gut.</b>\n\nDu hast die Abend-Adhkar beendet."
-        else:
-            text = "✅ <b>أحسنت.</b>\n\nانتهيت من أذكار المساء.\nنسأل الله أن يحفظك في ليلتك."
-        await safe_edit(q, text, adhkar_main_menu(user_id))
+        lang_pack = ADHKAR_LANGUAGES.get(lang, ADHKAR_LANGUAGES["ar"])
+        await safe_edit(q, lang_pack["done_evening"], adhkar_main_menu(user_id))
 
     elif data == "adhkar_reminders":
         morning, evening = get_adhkar_reminder_status(user_id)
+
         text = f"""⏰ <b>تذكير الأذكار</b>
 
 🌅 تذكير الصباح: {"✅ مفعل" if morning else "❌ غير مفعل"}
@@ -1166,6 +1377,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🕘 وقت الصباح الحالي: <code>{esc(MORNING_ADHKAR_TIME)}</code>
 🕕 وقت المساء الحالي: <code>{esc(EVENING_ADHKAR_TIME)}</code>
 """
+
         await safe_edit(q, text, adhkar_reminder_menu(user_id))
 
     elif data == "adhkar_toggle_morning":
@@ -1194,7 +1406,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🚫 لا نقدّم آراء شخصية.
 ✅ ننشر نصوصًا موثقة ومترجمة.
 
-🤲 يحتوي البوت على أذكار الصباح والمساء بثلاث لغات.
+🤲 يحتوي البوت على أذكار الصباح والمساء بلغات متعددة.
 
 🌍 القناة:
 {esc(CHANNEL_ID)}
@@ -1206,12 +1418,14 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not is_admin(user_id):
             await q.answer("غير مسموح", show_alert=True)
             return
+
         await safe_edit(q, "🛠️ <b>لوحة الإدارة</b>\n\nاختر إجراء:", admin_menu())
 
     elif data == "admin_post_hadith":
         if not is_admin(user_id):
             await q.answer("غير مسموح", show_alert=True)
             return
+
         text, hid = hadith_channel_message()
         await send_channel_message(context, text, "hadith", hid, "admin_manual_hadith")
         await safe_edit(q, "✅ <b>تم نشر حديث في القناة.</b>", admin_menu())
@@ -1220,6 +1434,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not is_admin(user_id):
             await q.answer("غير مسموح", show_alert=True)
             return
+
         text, ayah_ref = quran_channel_message()
         await send_channel_message(context, text, "quran", ayah_ref, "admin_manual_quran")
         await safe_edit(q, "✅ <b>تم نشر آية في القناة.</b>", admin_menu())
@@ -1228,6 +1443,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not is_admin(user_id):
             await q.answer("غير مسموح", show_alert=True)
             return
+
         text, item_id = mixed_channel_message()
         await send_channel_message(context, text, "mixed", item_id, "admin_manual_mixed")
         await safe_edit(q, "✅ <b>تم نشر آية + حديث في القناة.</b>", admin_menu())
@@ -1255,6 +1471,9 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🤲 <b>مشتركو تذكير الصباح:</b> {morning_count}
 🤲 <b>مشتركو تذكير المساء:</b> {evening_count}
 
+🌍 <b>لغات الأذكار:</b>
+العربية، الإنجليزية، الألمانية، الفرنسية، الإسبانية، التركية، الإندونيسية، الأردية، الهندية.
+
 ⏰ <b>أوقات الأذكار:</b>
 • صباح: <code>{esc(MORNING_ADHKAR_TIME)}</code>
 • مساء: <code>{esc(EVENING_ADHKAR_TIME)}</code>
@@ -1268,11 +1487,14 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not is_admin(user_id):
             await q.answer("غير مسموح", show_alert=True)
             return
+
         context.user_data["waiting_custom_post"] = True
         await safe_edit(q, "✍️ <b>أرسل الآن الرسالة التي تريد نشرها في القناة.</b>", admin_back())
 
 
-# ================== TEXT HANDLER ==================
+# =====================================================
+# Text Handler
+# =====================================================
 
 async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -1300,7 +1522,9 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
-# ================== MAIN ==================
+# =====================================================
+# Main
+# =====================================================
 
 def main():
     if not TOKEN:
@@ -1317,14 +1541,32 @@ def main():
     app.add_handler(CallbackQueryHandler(handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
 
-    app.job_queue.run_daily(auto_publish_hadith, time=parse_schedule_time(HADITH_POST_TIME, "09:00"))
-    app.job_queue.run_daily(auto_publish_quran, time=parse_schedule_time(QURAN_POST_TIME, "15:00"))
-    app.job_queue.run_daily(auto_publish_mixed, time=parse_schedule_time(MIXED_POST_TIME, "21:00"))
+    app.job_queue.run_daily(
+        auto_publish_hadith,
+        time=parse_schedule_time(HADITH_POST_TIME, "09:00")
+    )
 
-    app.job_queue.run_daily(send_morning_adhkar_reminders, time=parse_schedule_time(MORNING_ADHKAR_TIME, "06:00"))
-    app.job_queue.run_daily(send_evening_adhkar_reminders, time=parse_schedule_time(EVENING_ADHKAR_TIME, "18:00"))
+    app.job_queue.run_daily(
+        auto_publish_quran,
+        time=parse_schedule_time(QURAN_POST_TIME, "15:00")
+    )
 
-    print("Bot running with Adhkar in 3 languages...")
+    app.job_queue.run_daily(
+        auto_publish_mixed,
+        time=parse_schedule_time(MIXED_POST_TIME, "21:00")
+    )
+
+    app.job_queue.run_daily(
+        send_morning_adhkar_reminders,
+        time=parse_schedule_time(MORNING_ADHKAR_TIME, "06:00")
+    )
+
+    app.job_queue.run_daily(
+        send_evening_adhkar_reminders,
+        time=parse_schedule_time(EVENING_ADHKAR_TIME, "18:00")
+    )
+
+    print("Bot running with expanded adhkar language system...")
     print(f"Morning adhkar reminder: {MORNING_ADHKAR_TIME}")
     print(f"Evening adhkar reminder: {EVENING_ADHKAR_TIME}")
 
