@@ -4,6 +4,7 @@ import time
 import sqlite3
 import requests
 import datetime
+import html
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
@@ -33,6 +34,14 @@ TOPIC_KEYWORDS = {
     "topic_hajj": "hajj",
     "topic_manners": "manners",
 }
+
+
+def esc(text):
+    return html.escape(str(text or ""))
+
+
+def line():
+    return "\n━━━━━━━━━━━━━━\n"
 
 
 def init_db():
@@ -115,9 +124,19 @@ def get_daily_subscribers():
 
 async def safe_edit(query, text, markup=None):
     try:
-        await query.edit_message_text(text=text, reply_markup=markup)
+        await query.edit_message_text(
+            text=text,
+            reply_markup=markup,
+            parse_mode="HTML",
+            disable_web_page_preview=True
+        )
     except BadRequest:
-        await query.message.reply_text(text=text, reply_markup=markup)
+        await query.message.reply_text(
+            text=text,
+            reply_markup=markup,
+            parse_mode="HTML",
+            disable_web_page_preview=True
+        )
 
 
 def back_btn(lang):
@@ -237,15 +256,18 @@ def get_fatiha(lang):
         response.raise_for_status()
         ayat = response.json()["data"]["ayahs"]
 
-        title = "📖 سورة الفاتحة" if lang == "ar" else "📖 Al-Fatiha"
-        text = title + "\n\n"
+        title = "📖 <b>سورة الفاتحة</b>" if lang == "ar" else "📖 <b>Al-Fatiha</b>"
+        text = title + line()
 
         for ayah in ayat:
-            text += f"{ayah['numberInSurah']}. {ayah['text']}\n"
+            text += f"<b>{ayah['numberInSurah']}.</b> {esc(ayah['text'])}\n"
+
+        text += line()
+        text += "🌐 <i>AlQuran Cloud API</i>"
 
         return text
     except Exception as e:
-        return f"خطأ في جلب القرآن:\n{e}"
+        return f"❌ خطأ في جلب القرآن:\n<code>{esc(e)}</code>"
 
 
 def get_random_hadeethenc_id():
@@ -283,54 +305,60 @@ def get_hadeethenc_by_id(hadith_id, lang):
     }
 
 
+def format_hadeethenc_hadith(hadith_id, h, lang):
+    if lang == "ar":
+        ref_line = f"\n📖 <b>المرجع:</b> {esc(h['reference'])}" if h["reference"] else ""
+        return f"""🕊️ <b>حديث نبوي</b>{line()}
+{esc(h["text"])}
+{line()}
+📚 <b>المصدر:</b> {esc(h["attribution"])}
+✅ <b>الدرجة:</b> {esc(h["grade"])}
+🔢 <b>HadeethEnc ID:</b> <code>{esc(hadith_id)}</code>{ref_line}
+
+🌐 <i>المصدر التقني: HadeethEnc</i>
+"""
+
+    if lang == "de":
+        ref_line = f"\n📖 <b>Referenz:</b> {esc(h['reference'])}" if h["reference"] else ""
+        return f"""🕊️ <b>Hadith auf Deutsch</b>{line()}
+{esc(h["text"])}
+{line()}
+📚 <b>Quelle:</b> {esc(h["attribution"])}
+✅ <b>Einstufung:</b> {esc(h["grade"])}
+🔢 <b>HadeethEnc ID:</b> <code>{esc(hadith_id)}</code>{ref_line}
+
+🌐 <i>Technische Quelle: HadeethEnc</i>
+"""
+
+    ref_line = f"\n📖 <b>Reference:</b> {esc(h['reference'])}" if h["reference"] else ""
+    return f"""🕊️ <b>Hadith</b>{line()}
+{esc(h["text"])}
+{line()}
+📚 <b>Source:</b> {esc(h["attribution"])}
+✅ <b>Grade:</b> {esc(h["grade"])}
+🔢 <b>HadeethEnc ID:</b> <code>{esc(hadith_id)}</code>{ref_line}
+
+🌐 <i>Technical source: HadeethEnc</i>
+"""
+
+
 def fetch_hadeethenc_hadith(lang):
     try:
         hadith_id = get_random_hadeethenc_id()
         if not hadith_id:
-            return "لم يتم العثور على حديث." if lang == "ar" else "Kein Hadith gefunden."
+            return "❌ لم يتم العثور على حديث." if lang == "ar" else "❌ Kein Hadith gefunden."
 
         h = get_hadeethenc_by_id(hadith_id, lang)
 
         if not h["text"]:
-            return "لم يتم العثور على نص الحديث. جرّب حديثًا آخر." if lang == "ar" else "Hadith-Text wurde nicht gefunden."
+            return "❌ لم يتم العثور على نص الحديث. جرّب حديثًا آخر." if lang == "ar" else "❌ Hadith-Text wurde nicht gefunden."
 
-        if lang == "ar":
-            ref_line = f"\n📖 المرجع: {h['reference']}" if h["reference"] else ""
-            return f"""🕊️ حديث نبوي
-
-━━━━━━━━━━━━━━
-
-{h["text"]}
-
-━━━━━━━━━━━━━━
-
-📚 المصدر: {h["attribution"]}
-✅ الدرجة: {h["grade"]}
-🔢 HadeethEnc ID: {hadith_id}{ref_line}
-
-🌐 المصدر التقني: HadeethEnc
-"""
-
-        ref_line = f"\n📖 Referenz: {h['reference']}" if h["reference"] else ""
-        return f"""🕊️ Hadith auf Deutsch
-
-━━━━━━━━━━━━━━
-
-{h["text"]}
-
-━━━━━━━━━━━━━━
-
-📚 Quelle: {h["attribution"]}
-✅ Einstufung: {h["grade"]}
-🔢 HadeethEnc ID: {hadith_id}{ref_line}
-
-🌐 Technische Quelle: HadeethEnc
-"""
+        return format_hadeethenc_hadith(hadith_id, h, lang)
 
     except Exception as e:
         if lang == "ar":
-            return f"حدث خطأ أثناء جلب الحديث:\n{e}\n\nـ {int(time.time())}"
-        return f"Fehler beim Laden des Hadith:\n{e}\n\nـ {int(time.time())}"
+            return f"❌ حدث خطأ أثناء جلب الحديث:\n<code>{esc(e)}</code>\n\nـ {int(time.time())}"
+        return f"❌ Fehler beim Laden des Hadith:\n<code>{esc(e)}</code>\n\nـ {int(time.time())}"
 
 
 def fetch_fawaz_hadith(book):
@@ -345,19 +373,16 @@ def fetch_fawaz_hadith(book):
         number = hadith.get("hadithnumber", "")
         text = hadith.get("text", "")
 
-        return f"""🕊️ Hadith
+        return f"""🕊️ <b>Hadith</b>{line()}
+📚 <b>Source:</b> {esc(title)}
+🔢 <b>Hadith number:</b> <code>{esc(number)}</code>
+{line()}
+{esc(text)}
 
-📚 Source: {title}
-🔢 Hadith number: {number}
-
-━━━━━━━━━━━━━━
-
-{text}
-
-🌐 Technical source: fawazahmed0 Hadith API
+🌐 <i>Technical source: fawazahmed0 Hadith API</i>
 """
     except Exception as e:
-        return f"Could not fetch hadith:\n{e}\n\nـ {int(time.time())}"
+        return f"❌ Could not fetch hadith:\n<code>{esc(e)}</code>\n\nـ {int(time.time())}"
 
 
 def search_fawaz_hadith(keyword, lang):
@@ -375,109 +400,92 @@ def search_fawaz_hadith(keyword, lang):
 
         if not results:
             if lang == "ar":
-                return "لم أجد نتيجة. جرّب البحث بالإنجليزية مثل: mercy, prayer, intention."
+                return "❌ لم أجد نتيجة. جرّب البحث بالإنجليزية مثل: <code>mercy</code>, <code>prayer</code>, <code>intention</code>."
             if lang == "de":
-                return "Kein Ergebnis gefunden. Versuche englische Wörter wie: mercy, prayer, intention."
-            return "No result found. Try: mercy, prayer, intention."
+                return "❌ Kein Ergebnis gefunden. Versuche englische Wörter wie: <code>mercy</code>, <code>prayer</code>, <code>intention</code>."
+            return "❌ No result found. Try: <code>mercy</code>, <code>prayer</code>, <code>intention</code>."
 
         hadith, title = random.choice(results)
         number = hadith.get("hadithnumber", "")
         text = hadith.get("text", "")
 
         if lang == "ar":
-            return f"""🕊️ حديث نبوي
+            return f"""🕊️ <b>حديث نبوي</b>{line()}
+📚 <b>المصدر:</b> {esc(title)}
+🔢 <b>رقم الحديث:</b> <code>{esc(number)}</code>
+📖 <b>النص المتوفر حاليًا:</b> English
+{line()}
+{esc(text)}
 
-📚 المصدر: {title}
-🔢 رقم الحديث: {number}
-📖 النص المتوفر حاليًا: English
-
-━━━━━━━━━━━━━━
-
-{text}
-
-🌐 المصدر التقني: fawazahmed0 Hadith API
+🌐 <i>المصدر التقني: fawazahmed0 Hadith API</i>
 """
 
         if lang == "de":
-            return f"""🕊️ Hadith
+            return f"""🕊️ <b>Hadith</b>{line()}
+📚 <b>Quelle:</b> {esc(title)}
+🔢 <b>Hadith-Nummer:</b> <code>{esc(number)}</code>
+📖 <b>Der verfügbare Text ist derzeit Englisch</b>
+{line()}
+{esc(text)}
 
-📚 Quelle: {title}
-🔢 Hadith-Nummer: {number}
-📖 Der verfügbare Text ist derzeit Englisch
-
-━━━━━━━━━━━━━━
-
-{text}
-
-🌐 Technische Quelle: fawazahmed0 Hadith API
+🌐 <i>Technische Quelle: fawazahmed0 Hadith API</i>
 """
 
-        return f"""🕊️ Hadith
+        return f"""🕊️ <b>Hadith</b>{line()}
+📚 <b>Source:</b> {esc(title)}
+🔢 <b>Hadith number:</b> <code>{esc(number)}</code>
+{line()}
+{esc(text)}
 
-📚 Source: {title}
-🔢 Hadith number: {number}
-
-━━━━━━━━━━━━━━
-
-{text}
-
-🌐 Technical source: fawazahmed0 Hadith API
+🌐 <i>Technical source: fawazahmed0 Hadith API</i>
 """
     except Exception as e:
-        return f"حدث خطأ أثناء البحث:\n{e}\n\nـ {int(time.time())}"
+        return f"❌ حدث خطأ أثناء البحث:\n<code>{esc(e)}</code>\n\nـ {int(time.time())}"
 
 
 def build_channel_message():
     try:
         hadith_id = get_random_hadeethenc_id()
         if not hadith_id:
-            return "تعذر جلب حديث اليوم."
+            return "❌ تعذر جلب حديث اليوم."
 
         ar = get_hadeethenc_by_id(hadith_id, "ar")
         en = get_hadeethenc_by_id(hadith_id, "en")
         de = get_hadeethenc_by_id(hadith_id, "de")
 
-        return f"""📩 رسالة اليوم | Daily Message | Tägliche Nachricht
+        return f"""📩 <b>رسالة اليوم | Daily Message | Tägliche Nachricht</b>
 
-🕊️ نفس الحديث بثلاث لغات
-Same Hadith in Three Languages
+🕊️ <b>نفس الحديث بثلاث لغات</b>
+<i>Same Hadith in Three Languages</i>
+{line()}
+🇸🇦 <b>العربية</b>
 
-━━━━━━━━━━━━━━
+{esc(ar["text"])}
+{line()}
+🇬🇧 <b>English</b>
 
-🇸🇦 العربية:
+{esc(en["text"])}
+{line()}
+🇩🇪 <b>Deutsch</b>
 
-{ar["text"]}
+{esc(de["text"])}
+{line()}
+📚 <b>المصدر:</b> {esc(ar["attribution"])}
+✅ <b>الدرجة:</b> {esc(ar["grade"])}
+🔢 <b>HadeethEnc ID:</b> <code>{esc(hadith_id)}</code>
 
-━━━━━━━━━━━━━━
-
-🇬🇧 English:
-
-{en["text"]}
-
-━━━━━━━━━━━━━━
-
-🇩🇪 Deutsch:
-
-{de["text"]}
-
-━━━━━━━━━━━━━━
-
-📚 المصدر: {ar["attribution"]}
-✅ الدرجة: {ar["grade"]}
-🔢 HadeethEnc ID: {hadith_id}
-
-🌍 {CHANNEL_ID}
+🌍 {esc(CHANNEL_ID)}
 """
     except Exception as e:
-        return f"تعذر بناء رسالة القناة:\n{e}"
+        return f"❌ تعذر بناء رسالة القناة:\n<code>{esc(e)}</code>"
 
 
 def get_daily_user_message(lang):
     if lang == "ar":
-        return "📩 رسالتك اليومية من Ummah Bridge\n\n" + fetch_hadeethenc_hadith("ar")
+        return "📩 <b>رسالتك اليومية من Ummah Bridge</b>\n\n" + fetch_hadeethenc_hadith("ar")
     if lang == "de":
-        return "📩 Deine tägliche Nachricht von Ummah Bridge\n\n" + fetch_hadeethenc_hadith("de")
-    return "📩 Your daily message from Ummah Bridge\n\n" + fetch_fawaz_hadith(random.choice(["bukhari", "muslim"]))
+        return "📩 <b>Deine tägliche Nachricht von Ummah Bridge</b>\n\n" + fetch_hadeethenc_hadith("de")
+    return "📩 <b>Your daily message from Ummah Bridge</b>\n\n" + fetch_fawaz_hadith(random.choice(["bukhari", "muslim"]))
 
 
 async def send_daily_user_messages(context: ContextTypes.DEFAULT_TYPE):
@@ -486,7 +494,7 @@ async def send_daily_user_messages(context: ContextTypes.DEFAULT_TYPE):
     for user_id, chat_id, lang in subscribers:
         try:
             text = get_daily_user_message(lang)
-            await context.bot.send_message(chat_id=chat_id, text=text)
+            await context.bot.send_message(chat_id=chat_id, text=text, parse_mode="HTML", disable_web_page_preview=True)
         except Exception as e:
             print(f"Daily user message error for user {user_id}: {e}")
 
@@ -494,14 +502,14 @@ async def send_daily_user_messages(context: ContextTypes.DEFAULT_TYPE):
 async def publish_daily_channel(context: ContextTypes.DEFAULT_TYPE):
     try:
         text = build_channel_message()
-        await context.bot.send_message(chat_id=CHANNEL_ID, text=text)
+        await context.bot.send_message(chat_id=CHANNEL_ID, text=text, parse_mode="HTML", disable_web_page_preview=True)
     except Exception as e:
         print(f"Channel publish error: {e}")
 
 
 async def test_channel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = build_channel_message()
-    await context.bot.send_message(chat_id=CHANNEL_ID, text=text)
+    await context.bot.send_message(chat_id=CHANNEL_ID, text=text, parse_mode="HTML", disable_web_page_preview=True)
     await update.message.reply_text("✅ تم نشر رسالة اختبار في القناة.")
 
 
@@ -520,7 +528,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def show_main_menu(query, lang):
     if lang == "ar":
-        text = "مرحبًا بك في Ummah Bridge\n\nاختر قسمًا:"
+        text = "🌉 <b>مرحبًا بك في Ummah Bridge</b>\n\nاختر قسمًا:"
         buttons = [
             [InlineKeyboardButton("📖 القرآن", callback_data="quran")],
             [InlineKeyboardButton("🕊️ الأحاديث", callback_data="hadith")],
@@ -528,7 +536,7 @@ async def show_main_menu(query, lang):
             [InlineKeyboardButton("⚙️ تغيير اللغة", callback_data="change_language")]
         ]
     elif lang == "de":
-        text = "Willkommen bei Ummah Bridge\n\nWähle einen Bereich:"
+        text = "🌉 <b>Willkommen bei Ummah Bridge</b>\n\nWähle einen Bereich:"
         buttons = [
             [InlineKeyboardButton("📖 Quran", callback_data="quran")],
             [InlineKeyboardButton("🕊️ Hadith", callback_data="hadith")],
@@ -536,7 +544,7 @@ async def show_main_menu(query, lang):
             [InlineKeyboardButton("⚙️ Sprache ändern", callback_data="change_language")]
         ]
     else:
-        text = "Welcome to Ummah Bridge\n\nChoose a section:"
+        text = "🌉 <b>Welcome to Ummah Bridge</b>\n\nChoose a section:"
         buttons = [
             [InlineKeyboardButton("📖 Quran", callback_data="quran")],
             [InlineKeyboardButton("🕊️ Hadith", callback_data="hadith")],
@@ -566,26 +574,26 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await safe_edit(query, get_fatiha(lang), InlineKeyboardMarkup(back_btn(lang)))
 
     elif data == "hadith":
-        await safe_edit(query, "اختر / Choose / Wähle:", InlineKeyboardMarkup(hadith_menu(lang)))
+        await safe_edit(query, "🕊️ <b>اختر / Choose / Wähle:</b>", InlineKeyboardMarkup(hadith_menu(lang)))
 
     elif data == "daily_menu":
         if lang == "ar":
-            text = "📩 الرسالة اليومية\n\nستصلك رسالة يومية تلقائيًا ما دام البوت يعمل."
+            text = "📩 <b>الرسالة اليومية</b>\n\nستصلك رسالة يومية تلقائيًا ما دام البوت يعمل."
         elif lang == "de":
-            text = "📩 Tägliche Nachricht\n\nDu erhältst täglich eine Nachricht, solange der Bot läuft."
+            text = "📩 <b>Tägliche Nachricht</b>\n\nDu erhältst täglich eine Nachricht, solange der Bot läuft."
         else:
-            text = "📩 Daily Message\n\nYou will receive a daily message as long as the bot is running."
+            text = "📩 <b>Daily Message</b>\n\nYou will receive a daily message as long as the bot is running."
 
         await safe_edit(query, text, InlineKeyboardMarkup(daily_menu(lang)))
 
     elif data == "daily_subscribe":
         subscribe_daily(user_id, chat_id, lang)
-        text = "✅ تم الاشتراك في الرسالة اليومية." if lang == "ar" else "✅ Du hast die tägliche Nachricht abonniert." if lang == "de" else "✅ You subscribed to the daily message."
+        text = "✅ <b>تم الاشتراك في الرسالة اليومية.</b>" if lang == "ar" else "✅ <b>Du hast die tägliche Nachricht abonniert.</b>" if lang == "de" else "✅ <b>You subscribed to the daily message.</b>"
         await safe_edit(query, text, InlineKeyboardMarkup(back_btn(lang)))
 
     elif data == "daily_unsubscribe":
         unsubscribe_daily(user_id)
-        text = "❌ تم إلغاء الاشتراك في الرسالة اليومية." if lang == "ar" else "❌ Du hast die tägliche Nachricht abbestellt." if lang == "de" else "❌ You unsubscribed from the daily message."
+        text = "❌ <b>تم إلغاء الاشتراك في الرسالة اليومية.</b>" if lang == "ar" else "❌ <b>Du hast die tägliche Nachricht abbestellt.</b>" if lang == "de" else "❌ <b>You unsubscribed from the daily message.</b>"
         await safe_edit(query, text, InlineKeyboardMarkup(back_btn(lang)))
 
     elif data == "daily_test":
@@ -593,7 +601,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await safe_edit(query, text, InlineKeyboardMarkup(back_btn(lang)))
 
     elif data == "browse_topics":
-        text = "📚 اختر بابًا:" if lang == "ar" else "📚 Wähle ein Thema:" if lang == "de" else "📚 Choose a topic:"
+        text = "📚 <b>اختر بابًا:</b>" if lang == "ar" else "📚 <b>Wähle ein Thema:</b>" if lang == "de" else "📚 <b>Choose a topic:</b>"
         await safe_edit(query, text, InlineKeyboardMarkup(topic_menu(lang)))
 
     elif data.startswith("topic_"):
@@ -611,11 +619,11 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["waiting_for_search"] = True
 
         if lang == "ar":
-            text = "🔍 البحث الحالي يعتمد على النص الإنجليزي. اكتب كلمة مثل: mercy, prayer, intention."
+            text = "🔍 البحث الحالي يعتمد على النص الإنجليزي.\nاكتب كلمة مثل: <code>mercy</code>, <code>prayer</code>, <code>intention</code>."
         elif lang == "de":
-            text = "🔍 Die Suche verwendet derzeit englische Begriffe, z. B.: mercy, prayer, intention."
+            text = "🔍 Die Suche verwendet derzeit englische Begriffe.\nZum Beispiel: <code>mercy</code>, <code>prayer</code>, <code>intention</code>."
         else:
-            text = "🔍 Type a keyword: mercy, prayer, intention."
+            text = "🔍 Type a keyword:\n<code>mercy</code>, <code>prayer</code>, <code>intention</code>."
 
         await safe_edit(query, text, InlineKeyboardMarkup(back_btn(lang)))
 
@@ -642,23 +650,23 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         current_hadith = context.user_data.get("current_hadith")
 
         if not current_hadith:
-            msg = "لا يوجد حديث لحفظه الآن." if lang == "ar" else "Es gibt aktuell keinen Hadith zum Speichern." if lang == "de" else "There is no hadith to save right now."
+            msg = "❌ لا يوجد حديث لحفظه الآن." if lang == "ar" else "❌ Es gibt aktuell keinen Hadith zum Speichern." if lang == "de" else "❌ There is no hadith to save right now."
             await safe_edit(query, msg, InlineKeyboardMarkup(back_btn(lang)))
             return
 
         save_hadith(user_id, lang, current_hadith)
-        msg = "✅ تم حفظ الحديث بنجاح." if lang == "ar" else "✅ Hadith wurde gespeichert." if lang == "de" else "✅ Hadith saved successfully."
-        await query.message.reply_text(msg)
+        msg = "✅ <b>تم حفظ الحديث بنجاح.</b>" if lang == "ar" else "✅ <b>Hadith wurde gespeichert.</b>" if lang == "de" else "✅ <b>Hadith saved successfully.</b>"
+        await query.message.reply_text(msg, parse_mode="HTML")
 
     elif data == "saved_hadiths":
         saved = get_saved_hadiths(user_id, limit=5)
 
         if not saved:
-            text = "لا توجد أحاديث محفوظة بعد." if lang == "ar" else "Noch keine Hadithe gespeichert." if lang == "de" else "No saved hadiths yet."
+            text = "❤️ لا توجد أحاديث محفوظة بعد." if lang == "ar" else "❤️ Noch keine Hadithe gespeichert." if lang == "de" else "❤️ No saved hadiths yet."
         else:
-            text = "❤️ آخر الأحاديث المحفوظة:\n\n" if lang == "ar" else "❤️ Zuletzt gespeicherte Hadithe:\n\n" if lang == "de" else "❤️ Latest saved hadiths:\n\n"
+            text = "❤️ <b>آخر الأحاديث المحفوظة:</b>\n\n" if lang == "ar" else "❤️ <b>Zuletzt gespeicherte Hadithe:</b>\n\n" if lang == "de" else "❤️ <b>Latest saved hadiths:</b>\n\n"
             for i, hadith in enumerate(saved, start=1):
-                text += f"#{i}\n{hadith[:900]}\n\n━━━━━━━━━━━━━━\n\n"
+                text += f"<b>#{i}</b>\n{hadith[:900]}\n\n━━━━━━━━━━━━━━\n\n"
 
         await safe_edit(query, text, InlineKeyboardMarkup(back_btn(lang)))
 
@@ -668,7 +676,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🇬🇧 English", callback_data="lang_en")],
             [InlineKeyboardButton("🇩🇪 Deutsch", callback_data="lang_de")]
         ]
-        await safe_edit(query, "اختر اللغة / Choose language / Sprache wählen:", InlineKeyboardMarkup(keyboard))
+        await safe_edit(query, "🌍 <b>اختر اللغة / Choose language / Sprache wählen:</b>", InlineKeyboardMarkup(keyboard))
 
     elif data == "back_main":
         context.user_data["waiting_for_search"] = False
@@ -692,7 +700,9 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         text=text,
-        reply_markup=InlineKeyboardMarkup(hadith_action_buttons(lang))
+        reply_markup=InlineKeyboardMarkup(hadith_action_buttons(lang)),
+        parse_mode="HTML",
+        disable_web_page_preview=True
     )
 
 
