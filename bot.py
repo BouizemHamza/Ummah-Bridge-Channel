@@ -513,12 +513,20 @@ def main():
     app.add_handler(CallbackQueryHandler(handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
 
-    app.job_queue.run_daily(
-        auto_publish_channel,
-        time=datetime.time(hour=9, minute=0, second=0)
-    )
+    # نشر تلقائي 3 مرات يوميًا حسب توقيت السيرفر
+    publish_times = [
+        datetime.time(hour=9, minute=0, second=0),
+        datetime.time(hour=15, minute=0, second=0),
+        datetime.time(hour=21, minute=0, second=0),
+    ]
 
-    print("Bot running...")
+    for publish_time in publish_times:
+        app.job_queue.run_daily(
+            auto_publish_channel,
+            time=publish_time
+        )
+
+    print("Bot running with 3 daily channel posts...")
     app.run_polling()
 
 
