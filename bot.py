@@ -17,6 +17,11 @@ from telegram.ext import (
 )
 from telegram.error import BadRequest
 
+
+# =====================================================
+# ENV
+# =====================================================
+
 TOKEN = os.environ.get("BOT_TOKEN")
 CHANNEL_ID = os.environ.get("CHANNEL_ID", "@UMMAHBRIDGE")
 ADMIN_ID = int(os.environ.get("ADMIN_ID", "0"))
@@ -36,7 +41,7 @@ DB = "bot.db"
 
 
 # =====================================================
-# Basic Helpers
+# Helpers
 # =====================================================
 
 def esc(text):
@@ -86,7 +91,7 @@ def parse_schedule_time(value, fallback="09:00"):
 
 
 # =====================================================
-# Expanded Language System
+# Languages
 # =====================================================
 
 ADHKAR_LANGUAGES = {
@@ -255,72 +260,181 @@ ADHKAR_LANGUAGES = {
 }
 
 
+REPEAT_TRANSLATIONS = {
+    "مرة واحدة": {
+        "ar": "مرة واحدة",
+        "en": "Once",
+        "de": "Einmal",
+        "fr": "Une fois",
+        "es": "Una vez",
+        "tr": "Bir kez",
+        "id": "Sekali",
+        "ur": "ایک بار",
+        "hi": "एक बार",
+    },
+    "ثلاث مرات": {
+        "ar": "ثلاث مرات",
+        "en": "Three times",
+        "de": "Dreimal",
+        "fr": "Trois fois",
+        "es": "Tres veces",
+        "tr": "Üç kez",
+        "id": "Tiga kali",
+        "ur": "تین بار",
+        "hi": "तीन बार",
+    },
+    "أربع مرات": {
+        "ar": "أربع مرات",
+        "en": "Four times",
+        "de": "Viermal",
+        "fr": "Quatre fois",
+        "es": "Cuatro veces",
+        "tr": "Dört kez",
+        "id": "Empat kali",
+        "ur": "چار بار",
+        "hi": "चार बार",
+    },
+    "سبع مرات": {
+        "ar": "سبع مرات",
+        "en": "Seven times",
+        "de": "Siebenmal",
+        "fr": "Sept fois",
+        "es": "Siete veces",
+        "tr": "Yedi kez",
+        "id": "Tujuh kali",
+        "ur": "سات بار",
+        "hi": "सात बार",
+    },
+    "عشر مرات": {
+        "ar": "عشر مرات",
+        "en": "Ten times",
+        "de": "Zehnmal",
+        "fr": "Dix fois",
+        "es": "Diez veces",
+        "tr": "On kez",
+        "id": "Sepuluh kali",
+        "ur": "دس بار",
+        "hi": "दस बार",
+    },
+    "مائة مرة": {
+        "ar": "مائة مرة",
+        "en": "One hundred times",
+        "de": "Hundertmal",
+        "fr": "Cent fois",
+        "es": "Cien veces",
+        "tr": "Yüz kez",
+        "id": "Seratus kali",
+        "ur": "سو بار",
+        "hi": "सौ बार",
+    },
+    "عشر مرات أو مائة مرة": {
+        "ar": "عشر مرات أو مائة مرة",
+        "en": "Ten or one hundred times",
+        "de": "Zehnmal oder hundertmal",
+        "fr": "Dix ou cent fois",
+        "es": "Diez o cien veces",
+        "tr": "On kez veya yüz kez",
+        "id": "Sepuluh atau seratus kali",
+        "ur": "دس بار یا سو بار",
+        "hi": "दस बार या सौ बार",
+    },
+}
+
+
+SOURCE_TRANSLATIONS = {
+    "من أذكار الصباح": {
+        "ar": "من أذكار الصباح",
+        "en": "Morning adhkar",
+        "de": "Morgen-Adhkar",
+        "fr": "Adhkâr du matin",
+        "es": "Adhkar de la mañana",
+        "tr": "Sabah zikirleri",
+        "id": "Dzikir pagi",
+        "ur": "صبح کے اذکار",
+        "hi": "सुबह के अज़कार",
+    },
+    "من أذكار المساء": {
+        "ar": "من أذكار المساء",
+        "en": "Evening adhkar",
+        "de": "Abend-Adhkar",
+        "fr": "Adhkâr du soir",
+        "es": "Adhkar de la tarde",
+        "tr": "Akşam zikirleri",
+        "id": "Dzikir petang",
+        "ur": "شام کے اذکار",
+        "hi": "शाम के अज़कार",
+    },
+    "من أذكار الصباح والمساء": {
+        "ar": "من أذكار الصباح والمساء",
+        "en": "Morning and evening adhkar",
+        "de": "Morgen- und Abend-Adhkar",
+        "fr": "Adhkâr du matin et du soir",
+        "es": "Adhkar de la mañana y de la tarde",
+        "tr": "Sabah ve akşam zikirleri",
+        "id": "Dzikir pagi dan petang",
+        "ur": "صبح و شام کے اذکار",
+        "hi": "सुबह और शाम के अज़कार",
+    },
+    "سيد الاستغفار": {
+        "ar": "سيد الاستغفار",
+        "en": "The master supplication for forgiveness",
+        "de": "Das umfassende Bittgebet um Vergebung",
+        "fr": "L’invocation maîtresse du pardon",
+        "es": "La súplica principal para pedir perdón",
+        "tr": "Bağışlanma duasının en kapsamlısı",
+        "id": "Doa utama untuk memohon ampunan",
+        "ur": "استغفار کی جامع دعا",
+        "hi": "क्षमा मांगने की प्रमुख दुआ",
+    },
+    "من الأذكار": {
+        "ar": "من الأذكار",
+        "en": "General dhikr",
+        "de": "Allgemeiner Dhikr",
+        "fr": "Dhikr général",
+        "es": "Dhikr general",
+        "tr": "Genel zikir",
+        "id": "Dzikir umum",
+        "ur": "عام ذکر",
+        "hi": "सामान्य ज़िक्र",
+    },
+    "من الأذكار المشروعة": {
+        "ar": "من الأذكار المشروعة",
+        "en": "Legislated remembrance",
+        "de": "Überlieferter Dhikr",
+        "fr": "Dhikr rapporté",
+        "es": "Dhikr legislado",
+        "tr": "Meşru zikir",
+        "id": "Dzikir yang disyariatkan",
+        "ur": "مشروع ذکر",
+        "hi": "मसनून ज़िक्र",
+    },
+}
+
+
 # =====================================================
 # Adhkar Data
-# Arabic is always shown.
-# "meanings" can be completed gradually.
 # =====================================================
 
 MORNING_ADHKAR = [
     {
         "ar": "أَصْـبَحْنا وَأَصْـبَحَ المُـلْكُ لله، والحَمْدُ لله، لا إلهَ إلاّ اللهُ وحدَهُ لا شريكَ له، لهُ المُـلْكُ ولهُ الحَمْـد، وهوَ على كلّ شيءٍ قدير.",
-        "repeat": {
-            "ar": "مرة واحدة",
-            "en": "Once",
-            "de": "Einmal",
-            "fr": "Une fois",
-            "es": "Una vez",
-            "tr": "Bir kez",
-            "id": "Sekali",
-            "ur": "ایک بار",
-            "hi": "एक बार",
-        },
-        "source": {
-            "ar": "من أذكار الصباح",
-            "en": "Morning adhkar",
-            "de": "Morgen-Adhkar",
-            "fr": "Adhkâr du matin",
-            "es": "Adhkar de la mañana",
-            "tr": "Sabah zikirleri",
-            "id": "Dzikir pagi",
-            "ur": "صبح کے اذکار",
-            "hi": "सुबह के अज़कार",
-        },
+        "repeat": {"ar": "مرة واحدة"},
+        "source": {"ar": "من أذكار الصباح"},
         "meanings": {
             "en": "We have entered the morning, and all dominion belongs to Allah. Praise belongs to Allah. There is no deity worthy of worship except Allah alone, with no partner. His is the dominion and His is the praise, and He has power over all things.",
             "de": "Wir sind in den Morgen eingetreten, und die Herrschaft gehört Allah. Alles Lob gehört Allah. Es gibt keinen anbetungswürdigen Gott außer Allah allein, ohne Partner. Ihm gehört die Herrschaft und Ihm gehört das Lob, und Er hat Macht über alle Dinge.",
-            "fr": "Nous sommes entrés dans le matin, et toute la royauté appartient à Allah. La louange appartient à Allah. Nul ne mérite d’être adoré sauf Allah, seul, sans associé. À Lui appartient la royauté et à Lui appartient la louange, et Il est capable de toute chose.",
-            "es": "Hemos llegado a la mañana, y todo dominio pertenece a Allah. La alabanza pertenece a Allah. No hay divinidad digna de adoración excepto Allah, solo, sin asociado. Suyo es el dominio y Suya es la alabanza, y Él tiene poder sobre todas las cosas.",
-            "tr": "Sabaha ulaştık ve mülk Allah’ındır. Hamd Allah’adır. Allah’tan başka ibadete layık hiçbir ilah yoktur; O tektir, ortağı yoktur. Mülk O’nundur, hamd O’nadır ve O her şeye güç yetirendir.",
-            "id": "Kami memasuki waktu pagi, dan seluruh kerajaan adalah milik Allah. Segala puji bagi Allah. Tidak ada sesembahan yang berhak disembah selain Allah semata, tidak ada sekutu bagi-Nya. Milik-Nya kerajaan dan milik-Nya segala pujian, dan Dia Mahakuasa atas segala sesuatu.",
-            "ur": "ہم نے صبح کی اور بادشاہی اللہ ہی کے لیے ہے۔ تمام تعریف اللہ کے لیے ہے۔ اللہ کے سوا کوئی معبود برحق نہیں، وہ اکیلا ہے، اس کا کوئی شریک نہیں۔ بادشاہی اسی کی ہے، تعریف اسی کے لیے ہے، اور وہ ہر چیز پر قادر ہے۔",
-            "hi": "हमने सुबह की, और सारी बादशाही अल्लाह ही की है। सारी प्रशंसा अल्लाह के लिए है। अल्लाह के सिवा कोई सच्चा पूज्य नहीं, वह अकेला है, उसका कोई साझी नहीं। उसी की बादशाही है, उसी के लिए प्रशंसा है, और वह हर चीज़ पर शक्ति रखता है।",
+            "fr": "Nous sommes entrés dans le matin, et toute la royauté appartient à Allah. La louange appartient à Allah. Nul ne mérite d’être adoré sauf Allah, seul, sans associé.",
+            "es": "Hemos llegado a la mañana, y todo dominio pertenece a Allah. La alabanza pertenece a Allah. No hay divinidad digna de adoración excepto Allah, solo, sin asociado.",
+            "tr": "Sabaha ulaştık ve mülk Allah’ındır. Hamd Allah’adır. Allah’tan başka ibadete layık hiçbir ilah yoktur; O tektir, ortağı yoktur.",
+            "id": "Kami memasuki waktu pagi, dan seluruh kerajaan adalah milik Allah. Segala puji bagi Allah. Tidak ada sesembahan yang berhak disembah selain Allah semata.",
+            "ur": "ہم نے صبح کی اور بادشاہی اللہ ہی کے لیے ہے۔ تمام تعریف اللہ کے لیے ہے۔ اللہ کے سوا کوئی معبود برحق نہیں۔",
+            "hi": "हमने सुबह की, और सारी बादशाही अल्लाह ही की है। सारी प्रशंसा अल्लाह के लिए है। अल्लाह के सिवा कोई सच्चा पूज्य नहीं।",
         },
     },
     {
         "ar": "اللّهـمَّ بِكَ أَصْـبَحْنا، وَبِكَ أَمْسَيْـنا، وَبِكَ نَحْـيا، وَبِكَ نَمـوتُ، وَإِلَيْكَ النُّـشور.",
-        "repeat": {
-            "ar": "مرة واحدة",
-            "en": "Once",
-            "de": "Einmal",
-            "fr": "Une fois",
-            "es": "Una vez",
-            "tr": "Bir kez",
-            "id": "Sekali",
-            "ur": "ایک بار",
-            "hi": "एक बार",
-        },
-        "source": {
-            "ar": "من أذكار الصباح",
-            "en": "Morning adhkar",
-            "de": "Morgen-Adhkar",
-            "fr": "Adhkâr du matin",
-            "es": "Adhkar de la mañana",
-            "tr": "Sabah zikirleri",
-            "id": "Dzikir pagi",
-            "ur": "صبح کے اذکار",
-            "hi": "सुबह के अज़कार",
-        },
+        "repeat": {"ar": "مرة واحدة"},
+        "source": {"ar": "من أذكار الصباح"},
         "meanings": {
             "en": "O Allah, by You we enter the morning, by You we enter the evening, by You we live, by You we die, and to You is the resurrection.",
             "de": "O Allah, durch Dich treten wir in den Morgen ein, durch Dich treten wir in den Abend ein, durch Dich leben wir, durch Dich sterben wir, und zu Dir ist die Auferstehung.",
@@ -351,6 +465,22 @@ MORNING_ADHKAR = [
         },
     },
     {
+        "ar": "اللّهـمَّ إنّي أَصْبَحْتُ أُشْهِدُكَ، وأُشْهِدُ حَمَلَةَ عَرْشِكَ، ومَلائِكَتَكَ، وجميعَ خَلْقِكَ، أنّكَ أنتَ اللهُ لا إلهَ إلاّ أنتَ وحدَكَ لا شريكَ لك، وأنّ محمّدًا عبدُكَ ورسولُك.",
+        "repeat": {"ar": "أربع مرات"},
+        "source": {"ar": "من أذكار الصباح"},
+        "meanings": {
+            "en": "O Allah, I have entered the morning calling You to witness, and calling the bearers of Your Throne, Your angels, and all Your creation to witness, that You are Allah; there is no deity worthy of worship except You alone with no partner, and that Muhammad is Your servant and Messenger.",
+        },
+    },
+    {
+        "ar": "اللّهـمَّ ما أَصْبَحَ بي مِنْ نِعْمَةٍ أو بأَحَدٍ مِنْ خَلْقِكَ، فَمِنْكَ وحدَكَ لا شريكَ لك، فَلَكَ الحمدُ ولكَ الشُّكر.",
+        "repeat": {"ar": "مرة واحدة"},
+        "source": {"ar": "من أذكار الصباح"},
+        "meanings": {
+            "en": "O Allah, whatever blessing has come to me or to any of Your creation this morning is from You alone, with no partner. To You belongs all praise and all thanks.",
+        },
+    },
+    {
         "ar": "حَسْبِيَ اللهُ لا إلهَ إلاّ هو، عليهِ توكّلتُ، وهوَ ربُّ العرشِ العظيم.",
         "repeat": {"ar": "سبع مرات"},
         "source": {"ar": "من أذكار الصباح والمساء"},
@@ -366,22 +496,6 @@ MORNING_ADHKAR = [
         "meanings": {
             "en": "In the name of Allah, with whose name nothing on earth or in the heavens can cause harm, and He is the All-Hearing, the All-Knowing.",
             "de": "Im Namen Allahs, mit dessen Namen nichts auf der Erde und nichts im Himmel Schaden zufügen kann. Er ist der Allhörende, der Allwissende.",
-        },
-    },
-    {
-        "ar": "اللّهـمَّ عافِني في بَدَني، اللّهـمَّ عافِني في سَمْعي، اللّهـمَّ عافِني في بَصَري، لا إلهَ إلاّ أنت.",
-        "repeat": {"ar": "ثلاث مرات"},
-        "source": {"ar": "من أذكار الصباح والمساء"},
-        "meanings": {
-            "en": "O Allah, grant me well-being in my body, my hearing, and my sight. There is no deity worthy of worship except You.",
-        },
-    },
-    {
-        "ar": "اللّهـمَّ إنّي أعوذُ بكَ مِنَ الكُفْرِ والفَقْر، وأعوذُ بكَ مِنْ عذابِ القَبْر، لا إلهَ إلاّ أنت.",
-        "repeat": {"ar": "ثلاث مرات"},
-        "source": {"ar": "من أذكار الصباح والمساء"},
-        "meanings": {
-            "en": "O Allah, I seek refuge in You from disbelief and poverty, and I seek refuge in You from the punishment of the grave. There is no deity worthy of worship except You.",
         },
     },
     {
@@ -409,27 +523,11 @@ MORNING_ADHKAR = [
         },
     },
     {
-        "ar": "اللّهـمَّ احفظني مِنْ بينِ يديَّ، ومِنْ خَلْفي، وعن يميني، وعن شمالي، ومِنْ فوقي، وأعوذُ بعظمتِكَ أن أُغتالَ مِنْ تحتي.",
-        "repeat": {"ar": "مرة واحدة"},
-        "source": {"ar": "من أذكار الصباح والمساء"},
-        "meanings": {
-            "en": "O Allah, protect me from in front of me, behind me, my right, my left, and above me. I seek refuge in Your greatness from being taken unaware from beneath me.",
-        },
-    },
-    {
         "ar": "يا حيُّ يا قيّومُ، برحمتِكَ أستغيث، أصلِحْ لي شأني كلَّه، ولا تَكِلْني إلى نفسي طَرْفَةَ عين.",
         "repeat": {"ar": "مرة واحدة"},
         "source": {"ar": "من أذكار الصباح والمساء"},
         "meanings": {
             "en": "O Ever-Living, O Sustainer, by Your mercy I seek help. Rectify all of my affairs and do not leave me to myself even for the blink of an eye.",
-        },
-    },
-    {
-        "ar": "أَصْبَحْنا على فِطْرَةِ الإسلام، وعلى كلمةِ الإخلاص، وعلى دينِ نبيّنا محمدٍ ﷺ، وعلى مِلّةِ أبينا إبراهيمَ حنيفًا مسلمًا وما كانَ مِنَ المشركين.",
-        "repeat": {"ar": "مرة واحدة"},
-        "source": {"ar": "من أذكار الصباح"},
-        "meanings": {
-            "en": "We have entered the morning upon the natural way of Islam, the word of sincerity, the religion of our Prophet Muhammad ﷺ, and the way of our father Ibrahim.",
         },
     },
     {
@@ -484,38 +582,29 @@ MORNING_ADHKAR = [
     },
 ]
 
+
 EVENING_ADHKAR = [item.copy() for item in MORNING_ADHKAR]
 
 EVENING_ADHKAR[0] = {
     "ar": "أَمْسَيْنا وأَمْسَى المُـلْكُ لله، والحَمْدُ لله، لا إلهَ إلاّ اللهُ وحدَهُ لا شريكَ له، لهُ المُـلْكُ ولهُ الحَمْـد، وهوَ على كلّ شيءٍ قدير.",
-    "repeat": MORNING_ADHKAR[0]["repeat"],
-    "source": {
-        "ar": "من أذكار المساء",
-        "en": "Evening adhkar",
-        "de": "Abend-Adhkar",
-        "fr": "Adhkâr du soir",
-        "es": "Adhkar de la tarde",
-        "tr": "Akşam zikirleri",
-        "id": "Dzikir petang",
-        "ur": "شام کے اذکار",
-        "hi": "शाम के अज़कार",
-    },
+    "repeat": {"ar": "مرة واحدة"},
+    "source": {"ar": "من أذكار المساء"},
     "meanings": {
-        "en": "We have entered the evening, and all dominion belongs to Allah. Praise belongs to Allah. There is no deity worthy of worship except Allah alone, with no partner. His is the dominion and His is the praise, and He has power over all things.",
-        "de": "Wir sind in den Abend eingetreten, und die Herrschaft gehört Allah. Alles Lob gehört Allah. Es gibt keinen anbetungswürdigen Gott außer Allah allein, ohne Partner. Ihm gehört die Herrschaft und Ihm gehört das Lob, und Er hat Macht über alle Dinge.",
-        "fr": "Nous sommes entrés dans le soir, et toute la royauté appartient à Allah. La louange appartient à Allah. Nul ne mérite d’être adoré sauf Allah, seul, sans associé.",
-        "es": "Hemos llegado a la tarde, y todo dominio pertenece a Allah. La alabanza pertenece a Allah. No hay divinidad digna de adoración excepto Allah, solo, sin asociado.",
-        "tr": "Akşama ulaştık ve mülk Allah’ındır. Hamd Allah’adır. Allah’tan başka ibadete layık hiçbir ilah yoktur; O tektir, ortağı yoktur.",
-        "id": "Kami memasuki waktu petang, dan seluruh kerajaan adalah milik Allah. Segala puji bagi Allah. Tidak ada sesembahan yang berhak disembah selain Allah semata.",
-        "ur": "ہم نے شام کی اور بادشاہی اللہ ہی کے لیے ہے۔ تمام تعریف اللہ کے لیے ہے۔ اللہ کے سوا کوئی معبود برحق نہیں۔",
-        "hi": "हमने शाम की, और सारी बादशाही अल्लाह ही की है। सारी प्रशंसा अल्लाह के लिए है। अल्लाह के सिवा कोई सच्चा पूज्य नहीं।",
+        "en": "We have entered the evening, and all dominion belongs to Allah. Praise belongs to Allah. There is no deity worthy of worship except Allah alone, with no partner.",
+        "de": "Wir sind in den Abend eingetreten, und die Herrschaft gehört Allah. Alles Lob gehört Allah. Es gibt keinen anbetungswürdigen Gott außer Allah allein.",
+        "fr": "Nous sommes entrés dans le soir, et toute la royauté appartient à Allah. La louange appartient à Allah.",
+        "es": "Hemos llegado a la tarde, y todo dominio pertenece a Allah. La alabanza pertenece a Allah.",
+        "tr": "Akşama ulaştık ve mülk Allah’ındır. Hamd Allah’adır.",
+        "id": "Kami memasuki waktu petang, dan seluruh kerajaan adalah milik Allah. Segala puji bagi Allah.",
+        "ur": "ہم نے شام کی اور بادشاہی اللہ ہی کے لیے ہے۔ تمام تعریف اللہ کے لیے ہے۔",
+        "hi": "हमने शाम की, और सारी बादशाही अल्लाह ही की है। सारी प्रशंसा अल्लाह के लिए है।",
     },
 }
 
 EVENING_ADHKAR[1] = {
     "ar": "اللّهـمَّ بِكَ أَمْسَيْنا، وبِكَ أَصْبَحْنا، وبِكَ نَحْيا، وبِكَ نَموتُ، وإليكَ المصير.",
-    "repeat": MORNING_ADHKAR[1]["repeat"],
-    "source": EVENING_ADHKAR[0]["source"],
+    "repeat": {"ar": "مرة واحدة"},
+    "source": {"ar": "من أذكار المساء"},
     "meanings": {
         "en": "O Allah, by You we enter the evening, by You we enter the morning, by You we live, by You we die, and to You is the return.",
         "de": "O Allah, durch Dich treten wir in den Abend ein, durch Dich treten wir in den Morgen ein, durch Dich leben wir, durch Dich sterben wir, und zu Dir ist die Rückkehr.",
@@ -581,6 +670,11 @@ def init_db():
         c.execute("ALTER TABLE users ADD COLUMN adhkar_lang TEXT DEFAULT 'ar'")
     if "created_at" not in user_cols:
         c.execute("ALTER TABLE users ADD COLUMN created_at INTEGER DEFAULT 0")
+
+    c.execute("PRAGMA table_info(saved)")
+    saved_cols = [row[1] for row in c.fetchall()]
+    if "created_at" not in saved_cols:
+        c.execute("ALTER TABLE saved ADD COLUMN created_at INTEGER DEFAULT 0")
 
     conn.commit()
     conn.close()
@@ -1044,11 +1138,26 @@ def admin_back():
 
 def get_localized_value(item, field, lang):
     data = item.get(field, {})
+
     if lang in data:
         return data[lang]
+
+    arabic_value = data.get("ar", "")
+
+    if field == "repeat":
+        translations = REPEAT_TRANSLATIONS.get(arabic_value)
+        if translations:
+            return translations.get(lang, translations.get("en", arabic_value))
+
+    if field == "source":
+        translations = SOURCE_TRANSLATIONS.get(arabic_value)
+        if translations:
+            return translations.get(lang, translations.get("en", arabic_value))
+
     if "en" in data and lang != "ar":
         return data["en"]
-    return data.get("ar", "")
+
+    return arabic_value
 
 
 def get_meaning(item, lang):
@@ -1566,7 +1675,7 @@ def main():
         time=parse_schedule_time(EVENING_ADHKAR_TIME, "18:00")
     )
 
-    print("Bot running with expanded adhkar language system...")
+    print("Bot running with fixed adhkar repeat/source translations...")
     print(f"Morning adhkar reminder: {MORNING_ADHKAR_TIME}")
     print(f"Evening adhkar reminder: {EVENING_ADHKAR_TIME}")
 
