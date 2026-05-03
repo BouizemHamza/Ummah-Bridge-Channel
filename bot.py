@@ -21,6 +21,10 @@ TOKEN = os.environ.get("BOT_TOKEN")
 CHANNEL_ID = os.environ.get("CHANNEL_ID", "@UMMAHBRIDGE")
 ADMIN_ID = int(os.environ.get("ADMIN_ID", "0"))
 
+HADITH_POST_TIME = os.environ.get("HADITH_POST_TIME", "09:00")
+QURAN_POST_TIME = os.environ.get("QURAN_POST_TIME", "15:00")
+MIXED_POST_TIME = os.environ.get("MIXED_POST_TIME", "21:00")
+
 QURAN_API = "https://api.alquran.cloud/v1"
 HADEETH_API = "https://hadeethenc.com/api/v1/hadeeths/one/"
 LIST_API = "https://hadeethenc.com/api/v1/hadeeths/list/"
@@ -55,6 +59,30 @@ def format_time_from_timestamp(ts):
     return datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
 
 
+def parse_schedule_time(value, fallback="09:00"):
+    try:
+        value = str(value or fallback).strip()
+        hour_text, minute_text = value.split(":")
+        hour = int(hour_text)
+        minute = int(minute_text)
+
+        if hour < 0 or hour > 23:
+            raise ValueError("Hour must be between 0 and 23")
+
+        if minute < 0 or minute > 59:
+            raise ValueError("Minute must be between 0 and 59")
+
+        return datetime.time(hour=hour, minute=minute, second=0)
+
+    except Exception:
+        fallback_hour, fallback_minute = fallback.split(":")
+        return datetime.time(
+            hour=int(fallback_hour),
+            minute=int(fallback_minute),
+            second=0
+        )
+
+
 # ================== قاعدة البيانات ==================
 
 def init_db():
@@ -87,6 +115,26 @@ def init_db():
         source TEXT DEFAULT 'bot'
     )
     """)
+
+    # Migration للنسخ القديمة
+    c.execute("PRAGMA table_info(saved)")
+    saved_columns = [row[1] for row in c.fetchall()]
+    if "created_at" not in saved_columns:
+        c.execute("ALTER TABLE saved ADD COLUMN created_at INTEGER DEFAULT 0")
+
+    c.execute("PRAGMA table_info(users)")
+    users_columns = [row[1] for row in c.fetchall()]
+    if "created_at" not in users_columns:
+        c.execute("ALTER TABLE users ADD COLUMN created_at INTEGER DEFAULT 0")
+
+    c.execute("PRAGMA table_info(channel_posts)")
+    post_columns = [row[1] for row in c.fetchall()]
+    if "item_id" not in post_columns:
+        c.execute("ALTER TABLE channel_posts ADD COLUMN item_id TEXT")
+    if "source" not in post_columns:
+        c.execute("ALTER TABLE channel_posts ADD COLUMN source TEXT DEFAULT 'bot'")
+    if "hour" not in post_columns:
+        c.execute("ALTER TABLE channel_posts ADD COLUMN hour INTEGER DEFAULT 0")
 
     conn.commit()
     conn.close()
@@ -563,11 +611,11 @@ async def auto_publish_hadith(context: ContextTypes.DEFAULT_TYPE):
             text=text,
             post_type="hadith",
             item_id=hid,
-            source="auto_09_hadith"
+            source="auto_hadith"
         )
-        print("✅ Daily hadith post sent.")
+        print("✅ Scheduled hadith post sent.")
     except Exception as e:
-        print(f"❌ Daily hadith post error: {e}")
+        print(f"❌ Scheduled hadith post error: {e}")
 
 
 async def auto_publish_quran(context: ContextTypes.DEFAULT_TYPE):
@@ -578,11 +626,11 @@ async def auto_publish_quran(context: ContextTypes.DEFAULT_TYPE):
             text=text,
             post_type="quran",
             item_id=ayah_ref,
-            source="auto_15_quran"
+            source="auto_quran"
         )
-        print("✅ Daily quran post sent.")
+        print("✅ Scheduled quran post sent.")
     except Exception as e:
-        print(f"❌ Daily quran post error: {e}")
+        print(f"❌ Scheduled quran post error: {e}")
 
 
 async def auto_publish_mixed(context: ContextTypes.DEFAULT_TYPE):
@@ -593,11 +641,11 @@ async def auto_publish_mixed(context: ContextTypes.DEFAULT_TYPE):
             text=text,
             post_type="mixed",
             item_id=item_id,
-            source="auto_21_mixed"
+            source="auto_mixed"
         )
-        print("✅ Daily mixed post sent.")
+        print("✅ Scheduled mixed post sent.")
     except Exception as e:
-        print(f"❌ Daily mixed post error: {e}")
+        print(f"❌ Scheduled mixed post error: {e}")
 
 
 # ================== Callback Handler ==================
@@ -865,6 +913,11 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 {best_text}
 
+🕘 <b>جدول النشر الحالي:</b>
+• حديث: <code>{esc(HADITH_POST_TIME)}</code>
+• آية: <code>{esc(QURAN_POST_TIME)}</code>
+• آية + حديث: <code>{esc(MIXED_POST_TIME)}</code>
+
 🌐 <b>القناة:</b> {esc(CHANNEL_ID)}
 """,
             admin_menu()
@@ -950,22 +1003,30 @@ def main():
     app.add_handler(CallbackQueryHandler(handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
 
+    hadith_time = parse_schedule_time(HADITH_POST_TIME, "09:00")
+    quran_time = parse_schedule_time(QURAN_POST_TIME, "15:00")
+    mixed_time = parse_schedule_time(MIXED_POST_TIME, "21:00")
+
     app.job_queue.run_daily(
         auto_publish_hadith,
-        time=datetime.time(hour=9, minute=0, second=0)
+        time=hadith_time
     )
 
     app.job_queue.run_daily(
         auto_publish_quran,
-        time=datetime.time(hour=15, minute=0, second=0)
+        time=quran_time
     )
 
     app.job_queue.run_daily(
         auto_publish_mixed,
-        time=datetime.time(hour=21, minute=0, second=0)
+        time=mixed_time
     )
 
-    print("Bot running with Quran + Hadith daily posts...")
+    print("Bot running with configurable schedule...")
+    print(f"Hadith post time: {HADITH_POST_TIME}")
+    print(f"Quran post time: {QURAN_POST_TIME}")
+    print(f"Mixed post time: {MIXED_POST_TIME}")
+
     app.run_polling()
 
 
