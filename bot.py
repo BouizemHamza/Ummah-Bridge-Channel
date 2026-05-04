@@ -5,7 +5,7 @@ import requests
 import html
 import datetime
 import time
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from zoneinfo import ZoneInfo
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
@@ -33,6 +33,7 @@ from adhkar_data import (
 
 TOKEN = os.environ.get("BOT_TOKEN")
 CHANNEL_ID = os.environ.get("CHANNEL_ID", "@UMMAHBRIDGE")
+WHATSAPP_CHANNEL_URL = os.environ.get("WHATSAPP_CHANNEL_URL", "")
 ADMIN_ID = int(os.environ.get("ADMIN_ID", "0"))
 
 HADITH_POST_TIME = os.environ.get("HADITH_POST_TIME", "09:00")
@@ -362,7 +363,6 @@ def set_adhkar_reminder(user_id, chat_id, kind, enabled):
             "UPDATE adhkar_reminders SET morning=?, chat_id=? WHERE user_id=?",
             (1 if enabled else 0, chat_id, user_id)
         )
-
     elif kind == "evening":
         c.execute(
             "UPDATE adhkar_reminders SET evening=?, chat_id=? WHERE user_id=?",
@@ -758,8 +758,11 @@ def main_menu(user_id):
         [InlineKeyboardButton("🕊️ الأحاديث", callback_data="hadith")],
         [InlineKeyboardButton("🤲 الأذكار", callback_data="adhkar_menu")],
         [InlineKeyboardButton("ℹ️ عن المشروع", callback_data="about")],
-        [InlineKeyboardButton("🌐 القناة الرسمية", url="https://t.me/UMMAHBRIDGE")]
+        [InlineKeyboardButton("🌐 قناة Telegram", url="https://t.me/UMMAHBRIDGE")]
     ]
+
+    if WHATSAPP_CHANNEL_URL:
+        buttons.append([InlineKeyboardButton("🟢 قناة WhatsApp", url=WHATSAPP_CHANNEL_URL)])
 
     if is_admin(user_id):
         buttons.append([InlineKeyboardButton("🛠️ لوحة الإدارة", callback_data="admin")])
@@ -907,6 +910,19 @@ def back():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")]
     ])
+
+
+def about_menu():
+    buttons = [
+        [InlineKeyboardButton("🌐 قناة Telegram", url="https://t.me/UMMAHBRIDGE")]
+    ]
+
+    if WHATSAPP_CHANNEL_URL:
+        buttons.append([InlineKeyboardButton("🟢 قناة WhatsApp", url=WHATSAPP_CHANNEL_URL)])
+
+    buttons.append([InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")])
+
+    return InlineKeyboardMarkup(buttons)
 
 
 def admin_back():
@@ -1238,15 +1254,7 @@ async def test_channel(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     text, hid = hadith_channel_message()
-
-    await send_channel_message(
-        context=context,
-        text=text,
-        post_type="hadith",
-        item_id=hid,
-        source="test_command"
-    )
-
+    await send_channel_message(context, text, "hadith", hid, "test_command")
     await update.message.reply_text("✅ تم نشر رسالة اختبار في القناة.")
 
 
@@ -1615,10 +1623,13 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🤲 يحتوي البوت على أذكار الصباح والمساء بلغات متعددة مع عداد تكرار.
 ⏰ ويمكن لكل مستخدم اختيار وقت التذكير والمنطقة الزمنية الخاصة به.
 
-🌍 القناة:
+🌍 Telegram:
 {esc(CHANNEL_ID)}
+
+🟢 WhatsApp:
+{esc(WHATSAPP_CHANNEL_URL) if WHATSAPP_CHANNEL_URL else "غير مضاف بعد"}
 """,
-            back()
+            about_menu()
         )
 
     elif data == "admin":
@@ -1677,6 +1688,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🔁 <b>ميزة عداد التكرار:</b> مفعلة
 ⏰ <b>التذكير الشخصي:</b> مفعّل
 🌍 <b>المنطقة الزمنية لكل مستخدم:</b> مفعّلة
+🟢 <b>زر WhatsApp:</b> {"مفعّل" if WHATSAPP_CHANNEL_URL else "غير مفعّل"}
 
 ⏰ <b>الأوقات الافتراضية للمستخدم الجديد:</b>
 • صباح: <code>{esc(DEFAULT_MORNING_ADHKAR_TIME)}</code>
@@ -1831,13 +1843,14 @@ def main():
         first=10
     )
 
-    print("Bot running with personal adhkar reminder times + user timezones...")
+    print("Bot running with WhatsApp button + personal adhkar reminder times + user timezones...")
     print(f"Hadith post time: {HADITH_POST_TIME}")
     print(f"Quran post time: {QURAN_POST_TIME}")
     print(f"Mixed post time: {MIXED_POST_TIME}")
     print(f"Default morning adhkar time: {DEFAULT_MORNING_ADHKAR_TIME}")
     print(f"Default evening adhkar time: {DEFAULT_EVENING_ADHKAR_TIME}")
     print(f"Default user timezone: {safe_timezone(DEFAULT_USER_TIMEZONE)}")
+    print(f"WhatsApp channel enabled: {bool(WHATSAPP_CHANNEL_URL)}")
     print("Personal reminders checker: every 60 seconds")
 
     app.run_polling()
