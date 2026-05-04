@@ -5,6 +5,7 @@ import requests
 import html
 import datetime
 import time
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
@@ -38,8 +39,17 @@ HADITH_POST_TIME = os.environ.get("HADITH_POST_TIME", "09:00")
 QURAN_POST_TIME = os.environ.get("QURAN_POST_TIME", "15:00")
 MIXED_POST_TIME = os.environ.get("MIXED_POST_TIME", "21:00")
 
-MORNING_ADHKAR_TIME = os.environ.get("MORNING_ADHKAR_TIME", "06:00")
-EVENING_ADHKAR_TIME = os.environ.get("EVENING_ADHKAR_TIME", "18:00")
+DEFAULT_USER_TIMEZONE = os.environ.get("DEFAULT_USER_TIMEZONE", "Europe/Berlin")
+
+DEFAULT_MORNING_ADHKAR_TIME = os.environ.get(
+    "DEFAULT_MORNING_ADHKAR_TIME",
+    os.environ.get("MORNING_ADHKAR_TIME", "06:00")
+)
+
+DEFAULT_EVENING_ADHKAR_TIME = os.environ.get(
+    "DEFAULT_EVENING_ADHKAR_TIME",
+    os.environ.get("EVENING_ADHKAR_TIME", "18:00")
+)
 
 QURAN_API = "https://api.alquran.cloud/v1"
 HADEETH_API = "https://hadeethenc.com/api/v1/hadeeths/one/"
@@ -66,6 +76,44 @@ def now_timestamp():
 
 def is_admin(user_id):
     return user_id == ADMIN_ID
+
+
+def is_valid_hhmm(value):
+    try:
+        value = str(value).strip()
+        h, m = value.split(":")
+        h = int(h)
+        m = int(m)
+        return 0 <= h <= 23 and 0 <= m <= 59
+    except Exception:
+        return False
+
+
+def is_valid_timezone(tz_name):
+    try:
+        ZoneInfo(str(tz_name).strip())
+        return True
+    except Exception:
+        return False
+
+
+def safe_timezone(tz_name):
+    if is_valid_timezone(tz_name):
+        return str(tz_name).strip()
+    return DEFAULT_USER_TIMEZONE if is_valid_timezone(DEFAULT_USER_TIMEZONE) else "UTC"
+
+
+def user_now(tz_name):
+    tz = ZoneInfo(safe_timezone(tz_name))
+    return datetime.datetime.now(tz)
+
+
+def user_today_key(tz_name):
+    return user_now(tz_name).strftime("%Y-%m-%d")
+
+
+def user_current_hhmm(tz_name):
+    return user_now(tz_name).strftime("%H:%M")
 
 
 def format_time_from_timestamp(ts):
@@ -129,6 +177,11 @@ def init_db():
         chat_id INTEGER NOT NULL,
         morning INTEGER DEFAULT 0,
         evening INTEGER DEFAULT 0,
+        morning_time TEXT DEFAULT '06:00',
+        evening_time TEXT DEFAULT '18:00',
+        timezone TEXT DEFAULT 'Europe/Berlin',
+        last_morning_sent TEXT DEFAULT '',
+        last_evening_sent TEXT DEFAULT '',
         created_at INTEGER DEFAULT 0
     )
     """)
@@ -165,6 +218,20 @@ def init_db():
     if "hour" not in post_cols:
         c.execute("ALTER TABLE channel_posts ADD COLUMN hour INTEGER DEFAULT 0")
 
+    c.execute("PRAGMA table_info(adhkar_reminders)")
+    reminder_cols = [row[1] for row in c.fetchall()]
+
+    if "morning_time" not in reminder_cols:
+        c.execute(f"ALTER TABLE adhkar_reminders ADD COLUMN morning_time TEXT DEFAULT '{DEFAULT_MORNING_ADHKAR_TIME}'")
+    if "evening_time" not in reminder_cols:
+        c.execute(f"ALTER TABLE adhkar_reminders ADD COLUMN evening_time TEXT DEFAULT '{DEFAULT_EVENING_ADHKAR_TIME}'")
+    if "timezone" not in reminder_cols:
+        c.execute(f"ALTER TABLE adhkar_reminders ADD COLUMN timezone TEXT DEFAULT '{safe_timezone(DEFAULT_USER_TIMEZONE)}'")
+    if "last_morning_sent" not in reminder_cols:
+        c.execute("ALTER TABLE adhkar_reminders ADD COLUMN last_morning_sent TEXT DEFAULT ''")
+    if "last_evening_sent" not in reminder_cols:
+        c.execute("ALTER TABLE adhkar_reminders ADD COLUMN last_evening_sent TEXT DEFAULT ''")
+
     conn.commit()
     conn.close()
 
@@ -172,12 +239,10 @@ def init_db():
 def add_user(user_id):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-
     c.execute(
         "INSERT OR IGNORE INTO users(user_id, created_at, adhkar_lang) VALUES(?, ?, 'ar')",
         (user_id, now_timestamp())
     )
-
     conn.commit()
     conn.close()
 
@@ -185,10 +250,8 @@ def add_user(user_id):
 def users_count():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-
     c.execute("SELECT COUNT(*) FROM users")
     count = c.fetchone()[0]
-
     conn.close()
     return count
 
@@ -196,10 +259,8 @@ def users_count():
 def get_adhkar_lang(user_id):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-
     c.execute("SELECT adhkar_lang FROM users WHERE user_id=?", (user_id,))
     row = c.fetchone()
-
     conn.close()
 
     if not row or not row[0]:
@@ -217,9 +278,7 @@ def set_adhkar_lang(user_id, lang):
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-
     c.execute("UPDATE users SET adhkar_lang=? WHERE user_id=?", (lang, user_id))
-
     conn.commit()
     conn.close()
 
@@ -227,12 +286,10 @@ def set_adhkar_lang(user_id, lang):
 def save_hadith(user_id, text):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-
     c.execute(
         "INSERT INTO saved(user_id, text, created_at) VALUES (?, ?, ?)",
         (user_id, text, now_timestamp())
     )
-
     conn.commit()
     conn.close()
 
@@ -240,10 +297,8 @@ def save_hadith(user_id, text):
 def saved_count():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-
     c.execute("SELECT COUNT(*) FROM saved")
     count = c.fetchone()[0]
-
     conn.close()
     return count
 
@@ -251,25 +306,56 @@ def saved_count():
 def get_saved_hadiths(user_id, limit=5):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-
     c.execute(
         "SELECT text, created_at FROM saved WHERE user_id=? ORDER BY created_at DESC LIMIT ?",
         (user_id, limit)
     )
-
     rows = c.fetchall()
     conn.close()
     return rows
 
 
-def set_adhkar_reminder(user_id, chat_id, kind, enabled):
+def ensure_adhkar_reminder_row(user_id, chat_id):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
     c.execute("""
-        INSERT OR IGNORE INTO adhkar_reminders(user_id, chat_id, morning, evening, created_at)
-        VALUES (?, ?, 0, 0, ?)
-    """, (user_id, chat_id, now_timestamp()))
+        INSERT OR IGNORE INTO adhkar_reminders(
+            user_id,
+            chat_id,
+            morning,
+            evening,
+            morning_time,
+            evening_time,
+            timezone,
+            last_morning_sent,
+            last_evening_sent,
+            created_at
+        )
+        VALUES (?, ?, 0, 0, ?, ?, ?, '', '', ?)
+    """, (
+        user_id,
+        chat_id,
+        DEFAULT_MORNING_ADHKAR_TIME,
+        DEFAULT_EVENING_ADHKAR_TIME,
+        safe_timezone(DEFAULT_USER_TIMEZONE),
+        now_timestamp()
+    ))
+
+    c.execute(
+        "UPDATE adhkar_reminders SET chat_id=? WHERE user_id=?",
+        (chat_id, user_id)
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def set_adhkar_reminder(user_id, chat_id, kind, enabled):
+    ensure_adhkar_reminder_row(user_id, chat_id)
+
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
 
     if kind == "morning":
         c.execute(
@@ -287,19 +373,132 @@ def set_adhkar_reminder(user_id, chat_id, kind, enabled):
     conn.close()
 
 
-def get_adhkar_reminder_status(user_id):
+def set_adhkar_reminder_time(user_id, chat_id, kind, hhmm):
+    if not is_valid_hhmm(hhmm):
+        return False
+
+    ensure_adhkar_reminder_row(user_id, chat_id)
+
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    c.execute("SELECT morning, evening FROM adhkar_reminders WHERE user_id=?", (user_id,))
-    row = c.fetchone()
+    if kind == "morning":
+        c.execute(
+            "UPDATE adhkar_reminders SET morning_time=?, chat_id=? WHERE user_id=?",
+            (hhmm, chat_id, user_id)
+        )
+    elif kind == "evening":
+        c.execute(
+            "UPDATE adhkar_reminders SET evening_time=?, chat_id=? WHERE user_id=?",
+            (hhmm, chat_id, user_id)
+        )
+    else:
+        conn.close()
+        return False
 
+    conn.commit()
+    conn.close()
+    return True
+
+
+def set_user_timezone(user_id, chat_id, timezone_name):
+    timezone_name = str(timezone_name).strip()
+
+    if not is_valid_timezone(timezone_name):
+        return False
+
+    ensure_adhkar_reminder_row(user_id, chat_id)
+
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute(
+        "UPDATE adhkar_reminders SET timezone=?, chat_id=? WHERE user_id=?",
+        (timezone_name, chat_id, user_id)
+    )
+    conn.commit()
+    conn.close()
+    return True
+
+
+def get_adhkar_reminder_status(user_id, chat_id=None):
+    if chat_id is not None:
+        ensure_adhkar_reminder_row(user_id, chat_id)
+
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT morning, evening, morning_time, evening_time, timezone, last_morning_sent, last_evening_sent
+        FROM adhkar_reminders
+        WHERE user_id=?
+    """, (user_id,))
+
+    row = c.fetchone()
     conn.close()
 
     if not row:
-        return 0, 0
+        return {
+            "morning": 0,
+            "evening": 0,
+            "morning_time": DEFAULT_MORNING_ADHKAR_TIME,
+            "evening_time": DEFAULT_EVENING_ADHKAR_TIME,
+            "timezone": safe_timezone(DEFAULT_USER_TIMEZONE),
+            "last_morning_sent": "",
+            "last_evening_sent": "",
+        }
 
-    return row[0], row[1]
+    return {
+        "morning": row[0],
+        "evening": row[1],
+        "morning_time": row[2] or DEFAULT_MORNING_ADHKAR_TIME,
+        "evening_time": row[3] or DEFAULT_EVENING_ADHKAR_TIME,
+        "timezone": safe_timezone(row[4] or DEFAULT_USER_TIMEZONE),
+        "last_morning_sent": row[5] or "",
+        "last_evening_sent": row[6] or "",
+    }
+
+
+def get_all_adhkar_reminder_rows():
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT
+            user_id,
+            chat_id,
+            morning,
+            evening,
+            morning_time,
+            evening_time,
+            timezone,
+            last_morning_sent,
+            last_evening_sent
+        FROM adhkar_reminders
+        WHERE morning=1 OR evening=1
+    """)
+
+    rows = c.fetchall()
+    conn.close()
+    return rows
+
+
+def update_last_adhkar_sent(user_id, kind, date_text):
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    if kind == "morning":
+        c.execute(
+            "UPDATE adhkar_reminders SET last_morning_sent=? WHERE user_id=?",
+            (date_text, user_id)
+        )
+    elif kind == "evening":
+        c.execute(
+            "UPDATE adhkar_reminders SET last_evening_sent=? WHERE user_id=?",
+            (date_text, user_id)
+        )
+
+    conn.commit()
+    conn.close()
 
 
 def get_adhkar_subscribers(kind):
@@ -338,10 +537,8 @@ def log_channel_post(post_type="hadith", item_id=None, source="bot"):
 def channel_posts_count():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-
     c.execute("SELECT COUNT(*) FROM channel_posts")
     count = c.fetchone()[0]
-
     conn.close()
     return count
 
@@ -349,10 +546,8 @@ def channel_posts_count():
 def channel_posts_count_by_type(post_type):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-
     c.execute("SELECT COUNT(*) FROM channel_posts WHERE post_type=?", (post_type,))
     count = c.fetchone()[0]
-
     conn.close()
     return count
 
@@ -618,18 +813,83 @@ def adhkar_lang_menu():
     ])
 
 
-def adhkar_reminder_menu(user_id):
-    morning, evening = get_adhkar_reminder_status(user_id)
+def adhkar_reminder_menu(user_id, chat_id=None):
+    status = get_adhkar_reminder_status(user_id, chat_id)
 
-    morning_status = "✅ مفعل" if morning else "❌ غير مفعل"
-    evening_status = "✅ مفعل" if evening else "❌ غير مفعل"
+    morning_status = "✅ مفعل" if status["morning"] else "❌ غير مفعل"
+    evening_status = "✅ مفعل" if status["evening"] else "❌ غير مفعل"
 
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(f"🌅 تذكير الصباح: {morning_status}", callback_data="adhkar_toggle_morning")],
         [InlineKeyboardButton(f"🌙 تذكير المساء: {evening_status}", callback_data="adhkar_toggle_evening")],
+        [InlineKeyboardButton(f"🕘 وقت الصباح: {status['morning_time']}", callback_data="adhkar_time_morning")],
+        [InlineKeyboardButton(f"🕕 وقت المساء: {status['evening_time']}", callback_data="adhkar_time_evening")],
+        [InlineKeyboardButton(f"🌍 المنطقة الزمنية: {status['timezone']}", callback_data="adhkar_timezone_menu")],
         [InlineKeyboardButton("⬅️ رجوع للأذكار", callback_data="adhkar_menu")],
         [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")]
     ])
+
+
+def time_selection_menu(kind):
+    if kind == "morning":
+        times = ["04:00", "05:00", "06:00", "07:00", "08:00", "09:00", "10:00"]
+    else:
+        times = ["16:00", "17:00", "18:00", "19:00", "20:00", "21:00", "22:00"]
+
+    rows = []
+    row = []
+
+    for t in times:
+        row.append(InlineKeyboardButton(t, callback_data=f"adhkar_settime_{kind}_{t}"))
+        if len(row) == 2:
+            rows.append(row)
+            row = []
+
+    if row:
+        rows.append(row)
+
+    rows.append([InlineKeyboardButton("✍️ أرسل وقتًا مخصصًا", callback_data=f"adhkar_customtime_{kind}")])
+    rows.append([InlineKeyboardButton("⬅️ رجوع للتذكير", callback_data="adhkar_reminders")])
+    rows.append([InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")])
+
+    return InlineKeyboardMarkup(rows)
+
+
+def timezone_menu():
+    zones = [
+        ("🇩🇪 Berlin", "Europe/Berlin"),
+        ("🇬🇧 London", "Europe/London"),
+        ("🇫🇷 Paris", "Europe/Paris"),
+        ("🇪🇸 Madrid", "Europe/Madrid"),
+        ("🇹🇷 Istanbul", "Europe/Istanbul"),
+        ("🇸🇦 Riyadh", "Asia/Riyadh"),
+        ("🇦🇪 Dubai", "Asia/Dubai"),
+        ("🇵🇰 Karachi", "Asia/Karachi"),
+        ("🇮🇳 Kolkata", "Asia/Kolkata"),
+        ("🇮🇩 Jakarta", "Asia/Jakarta"),
+        ("🇲🇦 Casablanca", "Africa/Casablanca"),
+        ("🇺🇸 New York", "America/New_York"),
+        ("🇺🇸 Chicago", "America/Chicago"),
+        ("🇺🇸 Los Angeles", "America/Los_Angeles"),
+    ]
+
+    rows = []
+    row = []
+
+    for label, zone in zones:
+        row.append(InlineKeyboardButton(label, callback_data=f"adhkar_settz_{zone}"))
+        if len(row) == 2:
+            rows.append(row)
+            row = []
+
+    if row:
+        rows.append(row)
+
+    rows.append([InlineKeyboardButton("✍️ إرسال منطقة زمنية مخصصة", callback_data="adhkar_custom_timezone")])
+    rows.append([InlineKeyboardButton("⬅️ رجوع للتذكير", callback_data="adhkar_reminders")])
+    rows.append([InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")])
+
+    return InlineKeyboardMarkup(rows)
 
 
 def admin_menu():
@@ -943,7 +1203,10 @@ async def send_channel_message(context, text, post_type, item_id, source):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
+    chat_id = update.message.chat_id
+
     add_user(user_id)
+    ensure_adhkar_reminder_row(user_id, chat_id)
 
     await update.message.reply_text(
         "🌉 <b>مرحبًا بك في Ummah Bridge</b>\n\nاختر من القائمة:",
@@ -994,17 +1257,8 @@ async def test_channel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def auto_publish_hadith(context: ContextTypes.DEFAULT_TYPE):
     try:
         text, hid = hadith_channel_message()
-
-        await send_channel_message(
-            context=context,
-            text=text,
-            post_type="hadith",
-            item_id=hid,
-            source="auto_hadith"
-        )
-
+        await send_channel_message(context, text, "hadith", hid, "auto_hadith")
         print("✅ Auto hadith sent.")
-
     except Exception as e:
         print(f"❌ Auto hadith error: {e}")
 
@@ -1012,17 +1266,8 @@ async def auto_publish_hadith(context: ContextTypes.DEFAULT_TYPE):
 async def auto_publish_quran(context: ContextTypes.DEFAULT_TYPE):
     try:
         text, ayah_ref = quran_channel_message()
-
-        await send_channel_message(
-            context=context,
-            text=text,
-            post_type="quran",
-            item_id=ayah_ref,
-            source="auto_quran"
-        )
-
+        await send_channel_message(context, text, "quran", ayah_ref, "auto_quran")
         print("✅ Auto quran sent.")
-
     except Exception as e:
         print(f"❌ Auto quran error: {e}")
 
@@ -1030,71 +1275,71 @@ async def auto_publish_quran(context: ContextTypes.DEFAULT_TYPE):
 async def auto_publish_mixed(context: ContextTypes.DEFAULT_TYPE):
     try:
         text, item_id = mixed_channel_message()
-
-        await send_channel_message(
-            context=context,
-            text=text,
-            post_type="mixed",
-            item_id=item_id,
-            source="auto_mixed"
-        )
-
+        await send_channel_message(context, text, "mixed", item_id, "auto_mixed")
         print("✅ Auto mixed sent.")
-
     except Exception as e:
         print(f"❌ Auto mixed error: {e}")
 
 
 # =====================================================
-# Adhkar Reminders
+# Personal Adhkar Reminders With Timezone
 # =====================================================
 
-async def send_morning_adhkar_reminders(context: ContextTypes.DEFAULT_TYPE):
-    subscribers = get_adhkar_subscribers("morning")
+async def send_adhkar_reminder_to_user(context, user_id, chat_id, kind):
+    lang = get_adhkar_lang(user_id)
+    lang_pack = ADHKAR_LANGUAGES.get(lang, ADHKAR_LANGUAGES["ar"])
 
-    for user_id, chat_id in subscribers:
-        lang = get_adhkar_lang(user_id)
-        lang_pack = ADHKAR_LANGUAGES.get(lang, ADHKAR_LANGUAGES["ar"])
+    if kind == "morning":
+        text = lang_pack["reminder_morning"]
+        button = lang_pack["start_morning_button"]
+        callback = "adhkar_morning_0"
+    else:
+        text = lang_pack["reminder_evening"]
+        button = lang_pack["start_evening_button"]
+        callback = "adhkar_evening_0"
 
-        try:
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text=lang_pack["reminder_morning"],
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton(
-                        lang_pack["start_morning_button"],
-                        callback_data="adhkar_morning_0"
-                    )]
-                ]),
-                parse_mode="HTML"
-            )
-
-        except Exception as e:
-            print(f"Morning adhkar reminder error for {user_id}: {e}")
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text=text,
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton(button, callback_data=callback)]
+        ]),
+        parse_mode="HTML"
+    )
 
 
-async def send_evening_adhkar_reminders(context: ContextTypes.DEFAULT_TYPE):
-    subscribers = get_adhkar_subscribers("evening")
+async def check_personal_adhkar_reminders(context: ContextTypes.DEFAULT_TYPE):
+    rows = get_all_adhkar_reminder_rows()
 
-    for user_id, chat_id in subscribers:
-        lang = get_adhkar_lang(user_id)
-        lang_pack = ADHKAR_LANGUAGES.get(lang, ADHKAR_LANGUAGES["ar"])
+    for row in rows:
+        user_id = row[0]
+        chat_id = row[1]
+        morning_enabled = row[2]
+        evening_enabled = row[3]
+        morning_time = row[4] or DEFAULT_MORNING_ADHKAR_TIME
+        evening_time = row[5] or DEFAULT_EVENING_ADHKAR_TIME
+        tz_name = safe_timezone(row[6] or DEFAULT_USER_TIMEZONE)
+        last_morning_sent = row[7] or ""
+        last_evening_sent = row[8] or ""
 
-        try:
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text=lang_pack["reminder_evening"],
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton(
-                        lang_pack["start_evening_button"],
-                        callback_data="adhkar_evening_0"
-                    )]
-                ]),
-                parse_mode="HTML"
-            )
+        local_time = user_current_hhmm(tz_name)
+        local_today = user_today_key(tz_name)
 
-        except Exception as e:
-            print(f"Evening adhkar reminder error for {user_id}: {e}")
+        if morning_enabled and morning_time == local_time and last_morning_sent != local_today:
+            try:
+                await send_adhkar_reminder_to_user(context, user_id, chat_id, "morning")
+                update_last_adhkar_sent(user_id, "morning", local_today)
+                print(f"✅ Morning reminder sent to {user_id} at {local_time} {tz_name}")
+            except Exception as e:
+                print(f"❌ Morning reminder error for {user_id}: {e}")
+
+        if evening_enabled and evening_time == local_time and last_evening_sent != local_today:
+            try:
+                await send_adhkar_reminder_to_user(context, user_id, chat_id, "evening")
+                update_last_adhkar_sent(user_id, "evening", local_today)
+                print(f"✅ Evening reminder sent to {user_id} at {local_time} {tz_name}")
+            except Exception as e:
+                print(f"❌ Evening reminder error for {user_id}: {e}")
 
 
 # =====================================================
@@ -1108,71 +1353,49 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = q.from_user.id
     chat_id = q.message.chat_id
     add_user(user_id)
+    ensure_adhkar_reminder_row(user_id, chat_id)
 
     data = q.data
 
     if data == "home":
-        await safe_edit(
-            q,
-            "🌉 <b>Ummah Bridge</b>\n\nاختر من القائمة:",
-            main_menu(user_id)
-        )
+        await safe_edit(q, "🌉 <b>Ummah Bridge</b>\n\nاختر من القائمة:", main_menu(user_id))
 
     elif data == "quran":
         try:
-            res = requests.get(
-                f"{QURAN_API}/surah/1/quran-uthmani",
-                timeout=15
-            )
+            res = requests.get(f"{QURAN_API}/surah/1/quran-uthmani", timeout=15)
             res.raise_for_status()
-
             ayat = res.json()["data"]["ayahs"]
 
             text = "📖 <b>سورة الفاتحة</b>" + line()
-
             for a in ayat:
                 text += f"{esc(a['text'])}\n"
 
             await safe_edit(q, text, back())
-
         except Exception as e:
-            await safe_edit(
-                q,
-                f"❌ خطأ في جلب القرآن:\n<code>{esc(e)}</code>",
-                back()
-            )
+            await safe_edit(q, f"❌ خطأ في جلب القرآن:\n<code>{esc(e)}</code>", back())
 
     elif data == "hadith":
-        await safe_edit(
-            q,
-            "🕊️ <b>قسم الأحاديث</b>",
-            hadith_menu()
-        )
+        await safe_edit(q, "🕊️ <b>قسم الأحاديث</b>", hadith_menu())
 
     elif data == "random":
         h = random_hadith("ar")
         context.user_data["last"] = h
-
         await safe_edit(q, h, hadith_menu())
 
     elif data == "save":
         h = context.user_data.get("last")
-
         if not h:
             await q.answer("لا يوجد حديث لحفظه", show_alert=True)
             return
-
         save_hadith(user_id, h)
         await q.answer("تم الحفظ ✅", show_alert=True)
 
     elif data == "saved":
         rows = get_saved_hadiths(user_id)
-
         if not rows:
             text = "❤️ لا توجد محفوظات بعد."
         else:
             text = "❤️ <b>محفوظاتك:</b>\n\n"
-
             for i, row in enumerate(rows, 1):
                 text += (
                     f"<b>#{i}</b>\n"
@@ -1180,12 +1403,10 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"{esc(row[0][:500])}\n\n"
                     f"━━━━━━━━━━━━━━\n\n"
                 )
-
         await safe_edit(q, text, back())
 
     elif data == "adhkar_menu":
         lang = get_adhkar_lang(user_id)
-
         await safe_edit(
             q,
             f"🤲 <b>قسم الأذكار</b>\n\n"
@@ -1195,16 +1416,11 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     elif data == "adhkar_lang_menu":
-        await safe_edit(
-            q,
-            "🌍 <b>اختر لغة الأذكار:</b>",
-            adhkar_lang_menu()
-        )
+        await safe_edit(q, "🌍 <b>اختر لغة الأذكار:</b>", adhkar_lang_menu())
 
     elif data.startswith("adhkar_lang_"):
         lang = data.split("_")[-1]
         set_adhkar_lang(user_id, lang)
-
         await safe_edit(
             q,
             f"✅ تم تغيير لغة الأذكار إلى: <b>{esc(language_display(lang))}</b>",
@@ -1216,108 +1432,170 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         kind = parts[2]
         index = int(parts[3])
         count = int(parts[4])
-
         lang = get_adhkar_lang(user_id)
-
-        text, markup = render_adhkar_counter(
-            kind=kind,
-            index=index,
-            lang=lang,
-            count=count
-        )
-
+        text, markup = render_adhkar_counter(kind, index, lang, count)
         await safe_edit(q, text, markup)
 
     elif data.startswith("adhkar_morning_"):
         index = int(data.split("_")[-1])
         lang = get_adhkar_lang(user_id)
-
         text, markup = render_adhkar("morning", index, lang)
-
         await safe_edit(q, text, markup)
 
     elif data.startswith("adhkar_evening_"):
         index = int(data.split("_")[-1])
         lang = get_adhkar_lang(user_id)
-
         text, markup = render_adhkar("evening", index, lang)
-
         await safe_edit(q, text, markup)
 
     elif data == "adhkar_done_morning":
         lang = get_adhkar_lang(user_id)
         lang_pack = ADHKAR_LANGUAGES.get(lang, ADHKAR_LANGUAGES["ar"])
-
-        await safe_edit(
-            q,
-            lang_pack["done_morning"],
-            adhkar_main_menu(user_id)
-        )
+        await safe_edit(q, lang_pack["done_morning"], adhkar_main_menu(user_id))
 
     elif data == "adhkar_done_evening":
         lang = get_adhkar_lang(user_id)
         lang_pack = ADHKAR_LANGUAGES.get(lang, ADHKAR_LANGUAGES["ar"])
-
-        await safe_edit(
-            q,
-            lang_pack["done_evening"],
-            adhkar_main_menu(user_id)
-        )
+        await safe_edit(q, lang_pack["done_evening"], adhkar_main_menu(user_id))
 
     elif data == "adhkar_reminders":
-        morning, evening = get_adhkar_reminder_status(user_id)
+        status = get_adhkar_reminder_status(user_id, chat_id)
+        local_now = user_now(status["timezone"]).strftime("%Y-%m-%d %H:%M")
 
-        text = f"""⏰ <b>تذكير الأذكار</b>
+        text = f"""⏰ <b>تذكير الأذكار الشخصي</b>
 
-🌅 تذكير الصباح: {"✅ مفعل" if morning else "❌ غير مفعل"}
-🌙 تذكير المساء: {"✅ مفعل" if evening else "❌ غير مفعل"}
+🌅 تذكير الصباح: {"✅ مفعل" if status["morning"] else "❌ غير مفعل"}
+🕘 وقت الصباح: <code>{esc(status["morning_time"])}</code>
 
-🕘 وقت الصباح الحالي: <code>{esc(MORNING_ADHKAR_TIME)}</code>
-🕕 وقت المساء الحالي: <code>{esc(EVENING_ADHKAR_TIME)}</code>
+🌙 تذكير المساء: {"✅ مفعل" if status["evening"] else "❌ غير مفعل"}
+🕕 وقت المساء: <code>{esc(status["evening_time"])}</code>
+
+🌍 المنطقة الزمنية:
+<code>{esc(status["timezone"])}</code>
+
+🕒 الوقت الحالي حسب منطقتك:
+<code>{esc(local_now)}</code>
+
+✅ التذكير سيصل حسب منطقتك الزمنية، وليس حسب توقيت Railway.
 """
 
-        await safe_edit(
-            q,
-            text,
-            adhkar_reminder_menu(user_id)
-        )
+        await safe_edit(q, text, adhkar_reminder_menu(user_id, chat_id))
 
     elif data == "adhkar_toggle_morning":
-        morning, evening = get_adhkar_reminder_status(user_id)
-        new_value = 0 if morning else 1
-
-        set_adhkar_reminder(
-            user_id=user_id,
-            chat_id=chat_id,
-            kind="morning",
-            enabled=new_value
-        )
-
+        status = get_adhkar_reminder_status(user_id, chat_id)
+        new_value = 0 if status["morning"] else 1
+        set_adhkar_reminder(user_id, chat_id, "morning", new_value)
         await q.answer("تم تحديث تذكير الصباح ✅", show_alert=True)
-
-        await safe_edit(
-            q,
-            "⏰ <b>تم تحديث إعدادات التذكير.</b>",
-            adhkar_reminder_menu(user_id)
-        )
+        await safe_edit(q, "⏰ <b>تم تحديث إعدادات التذكير.</b>", adhkar_reminder_menu(user_id, chat_id))
 
     elif data == "adhkar_toggle_evening":
-        morning, evening = get_adhkar_reminder_status(user_id)
-        new_value = 0 if evening else 1
+        status = get_adhkar_reminder_status(user_id, chat_id)
+        new_value = 0 if status["evening"] else 1
+        set_adhkar_reminder(user_id, chat_id, "evening", new_value)
+        await q.answer("تم تحديث تذكير المساء ✅", show_alert=True)
+        await safe_edit(q, "⏰ <b>تم تحديث إعدادات التذكير.</b>", adhkar_reminder_menu(user_id, chat_id))
 
-        set_adhkar_reminder(
-            user_id=user_id,
-            chat_id=chat_id,
-            kind="evening",
-            enabled=new_value
+    elif data == "adhkar_time_morning":
+        await safe_edit(
+            q,
+            "🌅 <b>اختر وقت تذكير الصباح:</b>\n\nأو اختر إرسال وقت مخصص مثل <code>06:30</code>.",
+            time_selection_menu("morning")
         )
 
-        await q.answer("تم تحديث تذكير المساء ✅", show_alert=True)
+    elif data == "adhkar_time_evening":
+        await safe_edit(
+            q,
+            "🌙 <b>اختر وقت تذكير المساء:</b>\n\nأو اختر إرسال وقت مخصص مثل <code>19:30</code>.",
+            time_selection_menu("evening")
+        )
+
+    elif data.startswith("adhkar_settime_"):
+        parts = data.split("_")
+        kind = parts[2]
+        selected_time = parts[3]
+        ok = set_adhkar_reminder_time(user_id, chat_id, kind, selected_time)
+
+        if ok:
+            await q.answer("تم حفظ الوقت ✅", show_alert=True)
+            await safe_edit(
+                q,
+                f"✅ تم تغيير وقت التذكير إلى: <code>{esc(selected_time)}</code>",
+                adhkar_reminder_menu(user_id, chat_id)
+            )
+        else:
+            await q.answer("وقت غير صحيح", show_alert=True)
+
+    elif data.startswith("adhkar_customtime_"):
+        kind = data.split("_")[-1]
+        context.user_data["waiting_adhkar_custom_time"] = kind
+        example = "06:30" if kind == "morning" else "19:30"
 
         await safe_edit(
             q,
-            "⏰ <b>تم تحديث إعدادات التذكير.</b>",
-            adhkar_reminder_menu(user_id)
+            f"✍️ أرسل الوقت الآن بهذه الصيغة:\n\n<code>{example}</code>\n\nمثال صحيح: <code>07:15</code>",
+            InlineKeyboardMarkup([
+                [InlineKeyboardButton("⬅️ رجوع للتذكير", callback_data="adhkar_reminders")],
+                [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")]
+            ])
+        )
+
+    elif data == "adhkar_timezone_menu":
+        status = get_adhkar_reminder_status(user_id, chat_id)
+        local_now = user_now(status["timezone"]).strftime("%Y-%m-%d %H:%M")
+
+        await safe_edit(
+            q,
+            f"""🌍 <b>اختر منطقتك الزمنية</b>
+
+المنطقة الحالية:
+<code>{esc(status["timezone"])}</code>
+
+الوقت الحالي حسبها:
+<code>{esc(local_now)}</code>
+
+اختر من القائمة أو أرسل منطقة زمنية مخصصة.
+""",
+            timezone_menu()
+        )
+
+    elif data.startswith("adhkar_settz_"):
+        tz_name = data.replace("adhkar_settz_", "", 1)
+        ok = set_user_timezone(user_id, chat_id, tz_name)
+
+        if ok:
+            await q.answer("تم حفظ المنطقة الزمنية ✅", show_alert=True)
+            local_now = user_now(tz_name).strftime("%Y-%m-%d %H:%M")
+            await safe_edit(
+                q,
+                f"""✅ تم تغيير المنطقة الزمنية إلى:
+<code>{esc(tz_name)}</code>
+
+🕒 الوقت الحالي حسبها:
+<code>{esc(local_now)}</code>
+""",
+                adhkar_reminder_menu(user_id, chat_id)
+            )
+        else:
+            await q.answer("منطقة زمنية غير صحيحة", show_alert=True)
+
+    elif data == "adhkar_custom_timezone":
+        context.user_data["waiting_adhkar_custom_timezone"] = True
+
+        await safe_edit(
+            q,
+            """✍️ أرسل المنطقة الزمنية الآن بهذه الصيغة:
+
+<code>Europe/Berlin</code>
+<code>Asia/Riyadh</code>
+<code>Africa/Casablanca</code>
+<code>America/New_York</code>
+
+استخدم اسمًا صحيحًا من IANA Time Zone.
+""",
+            InlineKeyboardMarkup([
+                [InlineKeyboardButton("⬅️ رجوع للتذكير", callback_data="adhkar_reminders")],
+                [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")]
+            ])
         )
 
     elif data == "about":
@@ -1335,6 +1613,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 ✅ ننشر نصوصًا موثقة ومترجمة.
 
 🤲 يحتوي البوت على أذكار الصباح والمساء بلغات متعددة مع عداد تكرار.
+⏰ ويمكن لكل مستخدم اختيار وقت التذكير والمنطقة الزمنية الخاصة به.
 
 🌍 القناة:
 {esc(CHANNEL_ID)}
@@ -1346,75 +1625,31 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not is_admin(user_id):
             await q.answer("غير مسموح", show_alert=True)
             return
-
-        await safe_edit(
-            q,
-            "🛠️ <b>لوحة الإدارة</b>\n\nاختر إجراء:",
-            admin_menu()
-        )
+        await safe_edit(q, "🛠️ <b>لوحة الإدارة</b>\n\nاختر إجراء:", admin_menu())
 
     elif data == "admin_post_hadith":
         if not is_admin(user_id):
             await q.answer("غير مسموح", show_alert=True)
             return
-
         text, hid = hadith_channel_message()
-
-        await send_channel_message(
-            context=context,
-            text=text,
-            post_type="hadith",
-            item_id=hid,
-            source="admin_manual_hadith"
-        )
-
-        await safe_edit(
-            q,
-            "✅ <b>تم نشر حديث في القناة.</b>",
-            admin_menu()
-        )
+        await send_channel_message(context, text, "hadith", hid, "admin_manual_hadith")
+        await safe_edit(q, "✅ <b>تم نشر حديث في القناة.</b>", admin_menu())
 
     elif data == "admin_post_quran":
         if not is_admin(user_id):
             await q.answer("غير مسموح", show_alert=True)
             return
-
         text, ayah_ref = quran_channel_message()
-
-        await send_channel_message(
-            context=context,
-            text=text,
-            post_type="quran",
-            item_id=ayah_ref,
-            source="admin_manual_quran"
-        )
-
-        await safe_edit(
-            q,
-            "✅ <b>تم نشر آية في القناة.</b>",
-            admin_menu()
-        )
+        await send_channel_message(context, text, "quran", ayah_ref, "admin_manual_quran")
+        await safe_edit(q, "✅ <b>تم نشر آية في القناة.</b>", admin_menu())
 
     elif data == "admin_post_mixed":
         if not is_admin(user_id):
             await q.answer("غير مسموح", show_alert=True)
             return
-
         text, item_id = mixed_channel_message()
-
-        await send_channel_message(
-            context=context,
-            text=text,
-            post_type="mixed",
-            item_id=item_id,
-            source="admin_manual_mixed"
-        )
-
-        await safe_edit(
-            q,
-            "✅ <b>تم نشر آية + حديث في القناة.</b>",
-            admin_menu()
-        )
+        await send_channel_message(context, text, "mixed", item_id, "admin_manual_mixed")
+        await safe_edit(q, "✅ <b>تم نشر آية + حديث في القناة.</b>", admin_menu())
 
     elif data == "admin_stats":
         if not is_admin(user_id):
@@ -1439,14 +1674,14 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🤲 <b>مشتركو تذكير الصباح:</b> {morning_count}
 🤲 <b>مشتركو تذكير المساء:</b> {evening_count}
 
-🌍 <b>لغات الأذكار:</b>
-العربية، الإنجليزية، الألمانية، الفرنسية، الإسبانية، التركية، الإندونيسية، الأردية، الهندية.
-
 🔁 <b>ميزة عداد التكرار:</b> مفعلة
+⏰ <b>التذكير الشخصي:</b> مفعّل
+🌍 <b>المنطقة الزمنية لكل مستخدم:</b> مفعّلة
 
-⏰ <b>أوقات الأذكار:</b>
-• صباح: <code>{esc(MORNING_ADHKAR_TIME)}</code>
-• مساء: <code>{esc(EVENING_ADHKAR_TIME)}</code>
+⏰ <b>الأوقات الافتراضية للمستخدم الجديد:</b>
+• صباح: <code>{esc(DEFAULT_MORNING_ADHKAR_TIME)}</code>
+• مساء: <code>{esc(DEFAULT_EVENING_ADHKAR_TIME)}</code>
+• Timezone: <code>{esc(safe_timezone(DEFAULT_USER_TIMEZONE))}</code>
 
 🌐 <b>القناة:</b> {esc(CHANNEL_ID)}
 """,
@@ -1457,14 +1692,8 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not is_admin(user_id):
             await q.answer("غير مسموح", show_alert=True)
             return
-
         context.user_data["waiting_custom_post"] = True
-
-        await safe_edit(
-            q,
-            "✍️ <b>أرسل الآن الرسالة التي تريد نشرها في القناة.</b>",
-            admin_back()
-        )
+        await safe_edit(q, "✍️ <b>أرسل الآن الرسالة التي تريد نشرها في القناة.</b>", admin_back())
 
 
 # =====================================================
@@ -1473,7 +1702,68 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
+    chat_id = update.message.chat_id
+
     add_user(user_id)
+    ensure_adhkar_reminder_row(user_id, chat_id)
+
+    if context.user_data.get("waiting_adhkar_custom_time"):
+        kind = context.user_data.get("waiting_adhkar_custom_time")
+        text = update.message.text.strip()
+
+        if not is_valid_hhmm(text):
+            await update.message.reply_text(
+                "❌ الوقت غير صحيح.\n\nأرسله بهذه الصيغة فقط:\n<code>07:30</code>",
+                parse_mode="HTML"
+            )
+            return
+
+        context.user_data["waiting_adhkar_custom_time"] = None
+        ok = set_adhkar_reminder_time(user_id, chat_id, kind, text)
+
+        if ok:
+            await update.message.reply_text(
+                f"✅ تم حفظ وقت التذكير: <code>{esc(text)}</code>",
+                reply_markup=adhkar_reminder_menu(user_id, chat_id),
+                parse_mode="HTML"
+            )
+        else:
+            await update.message.reply_text("❌ حدث خطأ أثناء حفظ الوقت.")
+
+        return
+
+    if context.user_data.get("waiting_adhkar_custom_timezone"):
+        timezone_name = update.message.text.strip()
+
+        if not is_valid_timezone(timezone_name):
+            await update.message.reply_text(
+                """❌ المنطقة الزمنية غير صحيحة.
+
+أرسل اسمًا صحيحًا مثل:
+<code>Europe/Berlin</code>
+<code>Asia/Riyadh</code>
+<code>Africa/Casablanca</code>
+<code>America/New_York</code>
+""",
+                parse_mode="HTML"
+            )
+            return
+
+        context.user_data["waiting_adhkar_custom_timezone"] = False
+        set_user_timezone(user_id, chat_id, timezone_name)
+        local_now = user_now(timezone_name).strftime("%Y-%m-%d %H:%M")
+
+        await update.message.reply_text(
+            f"""✅ تم حفظ المنطقة الزمنية:
+<code>{esc(timezone_name)}</code>
+
+🕒 الوقت الحالي حسبها:
+<code>{esc(local_now)}</code>
+""",
+            reply_markup=adhkar_reminder_menu(user_id, chat_id),
+            parse_mode="HTML"
+        )
+        return
 
     if context.user_data.get("waiting_custom_post"):
         if not is_admin(user_id):
@@ -1535,22 +1825,20 @@ def main():
         time=parse_schedule_time(MIXED_POST_TIME, "21:00")
     )
 
-    app.job_queue.run_daily(
-        send_morning_adhkar_reminders,
-        time=parse_schedule_time(MORNING_ADHKAR_TIME, "06:00")
+    app.job_queue.run_repeating(
+        check_personal_adhkar_reminders,
+        interval=60,
+        first=10
     )
 
-    app.job_queue.run_daily(
-        send_evening_adhkar_reminders,
-        time=parse_schedule_time(EVENING_ADHKAR_TIME, "18:00")
-    )
-
-    print("Bot running with adhkar repeat counter...")
+    print("Bot running with personal adhkar reminder times + user timezones...")
     print(f"Hadith post time: {HADITH_POST_TIME}")
     print(f"Quran post time: {QURAN_POST_TIME}")
     print(f"Mixed post time: {MIXED_POST_TIME}")
-    print(f"Morning adhkar reminder: {MORNING_ADHKAR_TIME}")
-    print(f"Evening adhkar reminder: {EVENING_ADHKAR_TIME}")
+    print(f"Default morning adhkar time: {DEFAULT_MORNING_ADHKAR_TIME}")
+    print(f"Default evening adhkar time: {DEFAULT_EVENING_ADHKAR_TIME}")
+    print(f"Default user timezone: {safe_timezone(DEFAULT_USER_TIMEZONE)}")
+    print("Personal reminders checker: every 60 seconds")
 
     app.run_polling()
 
