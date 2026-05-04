@@ -1476,7 +1476,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🕒 الوقت الحالي حسب منطقتك:
 <code>{esc(local_now)}</code>
 
-✅ التذكير سيصل حسب منطقتك الزمنية، وليس حسب توقيت Railway.
+✅ التذكير سيصل حسب منطقتك الزمنية.
 """
 
         await safe_edit(q, text, adhkar_reminder_menu(user_id, chat_id))
