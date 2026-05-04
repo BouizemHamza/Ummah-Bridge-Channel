@@ -188,6 +188,18 @@ def init_db():
     """)
 
     c.execute("""
+    CREATE TABLE IF NOT EXISTS adhkar_completions(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        kind TEXT NOT NULL,
+        completed_date TEXT NOT NULL,
+        completed_at INTEGER NOT NULL,
+        timezone TEXT DEFAULT '',
+        UNIQUE(user_id, kind, completed_date)
+    )
+    """)
+
+    c.execute("""
     CREATE TABLE IF NOT EXISTS channel_posts(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         post_type TEXT NOT NULL,
@@ -223,11 +235,17 @@ def init_db():
     reminder_cols = [row[1] for row in c.fetchall()]
 
     if "morning_time" not in reminder_cols:
-        c.execute(f"ALTER TABLE adhkar_reminders ADD COLUMN morning_time TEXT DEFAULT '{DEFAULT_MORNING_ADHKAR_TIME}'")
+        c.execute(
+            f"ALTER TABLE adhkar_reminders ADD COLUMN morning_time TEXT DEFAULT '{DEFAULT_MORNING_ADHKAR_TIME}'"
+        )
     if "evening_time" not in reminder_cols:
-        c.execute(f"ALTER TABLE adhkar_reminders ADD COLUMN evening_time TEXT DEFAULT '{DEFAULT_EVENING_ADHKAR_TIME}'")
+        c.execute(
+            f"ALTER TABLE adhkar_reminders ADD COLUMN evening_time TEXT DEFAULT '{DEFAULT_EVENING_ADHKAR_TIME}'"
+        )
     if "timezone" not in reminder_cols:
-        c.execute(f"ALTER TABLE adhkar_reminders ADD COLUMN timezone TEXT DEFAULT '{safe_timezone(DEFAULT_USER_TIMEZONE)}'")
+        c.execute(
+            f"ALTER TABLE adhkar_reminders ADD COLUMN timezone TEXT DEFAULT '{safe_timezone(DEFAULT_USER_TIMEZONE)}'"
+        )
     if "last_morning_sent" not in reminder_cols:
         c.execute("ALTER TABLE adhkar_reminders ADD COLUMN last_morning_sent TEXT DEFAULT ''")
     if "last_evening_sent" not in reminder_cols:
@@ -553,6 +571,198 @@ def channel_posts_count_by_type(post_type):
 
 
 # =====================================================
+# Adhkar Completion + Streak
+# =====================================================
+
+def get_completion_dates(user_id, kind):
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    c.execute(
+        """
+        SELECT completed_date
+        FROM adhkar_completions
+        WHERE user_id=? AND kind=?
+        ORDER BY completed_date ASC
+        """,
+        (user_id, kind)
+    )
+
+    rows = c.fetchall()
+    conn.close()
+
+    dates = []
+    for row in rows:
+        try:
+            dates.append(datetime.date.fromisoformat(row[0]))
+        except Exception:
+            pass
+
+    return dates
+
+
+def calculate_current_streak(dates, today_date):
+    if not dates:
+        return 0
+
+    date_set = set(dates)
+
+    if today_date not in date_set:
+        return 0
+
+    streak = 0
+    current = today_date
+
+    while current in date_set:
+        streak += 1
+        current = current - datetime.timedelta(days=1)
+
+    return streak
+
+
+def calculate_best_streak(dates):
+    if not dates:
+        return 0
+
+    unique_dates = sorted(set(dates))
+
+    best = 1
+    current_streak = 1
+
+    for i in range(1, len(unique_dates)):
+        previous = unique_dates[i - 1]
+        current = unique_dates[i]
+
+        if current == previous + datetime.timedelta(days=1):
+            current_streak += 1
+        else:
+            current_streak = 1
+
+        if current_streak > best:
+            best = current_streak
+
+    return best
+
+
+def get_adhkar_completion_stats(user_id, chat_id, kind):
+    status = get_adhkar_reminder_status(user_id, chat_id)
+    tz_name = status["timezone"]
+
+    today_text = user_today_key(tz_name)
+    today_date = datetime.date.fromisoformat(today_text)
+
+    dates = get_completion_dates(user_id, kind)
+
+    total = len(dates)
+    current_streak = calculate_current_streak(dates, today_date)
+    best_streak = calculate_best_streak(dates)
+
+    return {
+        "total": total,
+        "current_streak": current_streak,
+        "best_streak": best_streak,
+        "today": today_text,
+        "timezone": tz_name,
+    }
+
+
+def record_adhkar_completion(user_id, chat_id, kind):
+    status = get_adhkar_reminder_status(user_id, chat_id)
+    tz_name = status["timezone"]
+
+    today_text = user_today_key(tz_name)
+    completed_at = now_timestamp()
+
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    c.execute(
+        """
+        INSERT OR IGNORE INTO adhkar_completions(
+            user_id,
+            kind,
+            completed_date,
+            completed_at,
+            timezone
+        )
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (user_id, kind, today_text, completed_at, tz_name)
+    )
+
+    inserted = c.rowcount == 1
+
+    conn.commit()
+    conn.close()
+
+    stats = get_adhkar_completion_stats(user_id, chat_id, kind)
+    stats["inserted"] = inserted
+
+    return stats
+
+
+def adhkar_completions_count():
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    c.execute("SELECT COUNT(*) FROM adhkar_completions")
+    count = c.fetchone()[0]
+
+    conn.close()
+    return count
+
+
+def render_completion_message(kind, stats):
+    if kind == "morning":
+        title = "🌅 أذكار الصباح"
+    else:
+        title = "🌙 أذكار المساء"
+
+    if stats["inserted"]:
+        opening = f"✅ <b>تم تسجيل إنجازك اليومي</b>\n\n{title}"
+    else:
+        opening = f"ℹ️ <b>تم تسجيل هذا الإنجاز مسبقًا اليوم</b>\n\n{title}"
+
+    return f"""{opening}
+
+📅 <b>تاريخ اليوم:</b> <code>{esc(stats["today"])}</code>
+🌍 <b>المنطقة الزمنية:</b> <code>{esc(stats["timezone"])}</code>
+
+🔥 <b>سلسلتك الحالية:</b> {stats["current_streak"]} يوم
+🏆 <b>أفضل سلسلة:</b> {stats["best_streak"]} يوم
+📊 <b>إجمالي مرات الإكمال:</b> {stats["total"]}
+"""
+
+
+def render_user_adhkar_stats(user_id, chat_id):
+    morning = get_adhkar_completion_stats(user_id, chat_id, "morning")
+    evening = get_adhkar_completion_stats(user_id, chat_id, "evening")
+
+    return f"""📊 <b>إحصائيات الأذكار</b>
+
+🌅 <b>أذكار الصباح</b>
+✅ المكتملة: {morning["total"]}
+🔥 السلسلة الحالية: {morning["current_streak"]} يوم
+🏆 أفضل سلسلة: {morning["best_streak"]} يوم
+
+━━━━━━━━━━━━━━
+
+🌙 <b>أذكار المساء</b>
+✅ المكتملة: {evening["total"]}
+🔥 السلسلة الحالية: {evening["current_streak"]} يوم
+🏆 أفضل سلسلة: {evening["best_streak"]} يوم
+
+━━━━━━━━━━━━━━
+
+🌍 <b>المنطقة الزمنية:</b>
+<code>{esc(morning["timezone"])}</code>
+
+📅 <b>تاريخ اليوم حسب منطقتك:</b>
+<code>{esc(morning["today"])}</code>
+"""
+
+
+# =====================================================
 # Quran / Hadith APIs
 # =====================================================
 
@@ -785,6 +995,7 @@ def adhkar_main_menu(user_id):
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("🌅 أذكار الصباح", callback_data="adhkar_morning_0")],
         [InlineKeyboardButton("🌙 أذكار المساء", callback_data="adhkar_evening_0")],
+        [InlineKeyboardButton("📊 إحصائياتي", callback_data="adhkar_stats")],
         [InlineKeyboardButton(f"🌍 لغة الأذكار: {language_display(lang)}", callback_data="adhkar_lang_menu")],
         [InlineKeyboardButton("⏰ تذكير الأذكار", callback_data="adhkar_reminders")],
         [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")]
@@ -928,6 +1139,21 @@ def about_menu():
 def admin_back():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("⬅️ رجوع للوحة الإدارة", callback_data="admin")],
+        [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")]
+    ])
+
+
+def adhkar_stats_back_menu():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("⬅️ رجوع للأذكار", callback_data="adhkar_menu")],
+        [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")]
+    ])
+
+
+def completion_menu():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("📊 إحصائياتي", callback_data="adhkar_stats")],
+        [InlineKeyboardButton("⬅️ رجوع للأذكار", callback_data="adhkar_menu")],
         [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")]
     ])
 
@@ -1423,6 +1649,10 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             adhkar_main_menu(user_id)
         )
 
+    elif data == "adhkar_stats":
+        text = render_user_adhkar_stats(user_id, chat_id)
+        await safe_edit(q, text, adhkar_stats_back_menu())
+
     elif data == "adhkar_lang_menu":
         await safe_edit(q, "🌍 <b>اختر لغة الأذكار:</b>", adhkar_lang_menu())
 
@@ -1457,14 +1687,14 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await safe_edit(q, text, markup)
 
     elif data == "adhkar_done_morning":
-        lang = get_adhkar_lang(user_id)
-        lang_pack = ADHKAR_LANGUAGES.get(lang, ADHKAR_LANGUAGES["ar"])
-        await safe_edit(q, lang_pack["done_morning"], adhkar_main_menu(user_id))
+        stats = record_adhkar_completion(user_id, chat_id, "morning")
+        text = render_completion_message("morning", stats)
+        await safe_edit(q, text, completion_menu())
 
     elif data == "adhkar_done_evening":
-        lang = get_adhkar_lang(user_id)
-        lang_pack = ADHKAR_LANGUAGES.get(lang, ADHKAR_LANGUAGES["ar"])
-        await safe_edit(q, lang_pack["done_evening"], adhkar_main_menu(user_id))
+        stats = record_adhkar_completion(user_id, chat_id, "evening")
+        text = render_completion_message("evening", stats)
+        await safe_edit(q, text, completion_menu())
 
     elif data == "adhkar_reminders":
         status = get_adhkar_reminder_status(user_id, chat_id)
@@ -1621,6 +1851,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 ✅ ننشر نصوصًا موثقة ومترجمة.
 
 🤲 يحتوي البوت على أذكار الصباح والمساء بلغات متعددة مع عداد تكرار.
+🔥 ويحتوي على إنجاز يومي وسلسلة أيام للأذكار.
 ⏰ ويمكن لكل مستخدم اختيار وقت التذكير والمنطقة الزمنية الخاصة به.
 
 🌍 Telegram:
@@ -1676,6 +1907,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 👥 <b>عدد المستخدمين:</b> {users_count()}
 ❤️ <b>عدد الأحاديث المحفوظة:</b> {saved_count()}
+🤲 <b>إجمالي إنجازات الأذكار:</b> {adhkar_completions_count()}
 
 📢 <b>إجمالي منشورات القناة:</b> {channel_posts_count()}
 🕊️ <b>منشورات الحديث:</b> {channel_posts_count_by_type("hadith")}
@@ -1686,6 +1918,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🤲 <b>مشتركو تذكير المساء:</b> {evening_count}
 
 🔁 <b>ميزة عداد التكرار:</b> مفعلة
+🔥 <b>إنجاز يومي + Streak:</b> مفعّل
 ⏰ <b>التذكير الشخصي:</b> مفعّل
 🌍 <b>المنطقة الزمنية لكل مستخدم:</b> مفعّلة
 🟢 <b>زر WhatsApp:</b> {"مفعّل" if WHATSAPP_CHANNEL_URL else "غير مفعّل"}
@@ -1843,7 +2076,7 @@ def main():
         first=10
     )
 
-    print("Bot running with WhatsApp button + personal adhkar reminder times + user timezones...")
+    print("Bot running with WhatsApp button + personal reminders + timezones + adhkar streaks...")
     print(f"Hadith post time: {HADITH_POST_TIME}")
     print(f"Quran post time: {QURAN_POST_TIME}")
     print(f"Mixed post time: {MIXED_POST_TIME}")
@@ -1852,6 +2085,7 @@ def main():
     print(f"Default user timezone: {safe_timezone(DEFAULT_USER_TIMEZONE)}")
     print(f"WhatsApp channel enabled: {bool(WHATSAPP_CHANNEL_URL)}")
     print("Personal reminders checker: every 60 seconds")
+    print("Adhkar completion + streak system: enabled")
 
     app.run_polling()
 
