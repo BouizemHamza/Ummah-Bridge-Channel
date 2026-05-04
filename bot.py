@@ -210,6 +210,17 @@ def init_db():
     )
     """)
 
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS pending_channel_posts(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        post_type TEXT NOT NULL,
+        item_id TEXT,
+        text TEXT NOT NULL,
+        source TEXT DEFAULT 'auto',
+        created_at INTEGER NOT NULL
+    )
+    """)
+
     c.execute("PRAGMA table_info(users)")
     user_cols = [row[1] for row in c.fetchall()]
     if "adhkar_lang" not in user_cols:
@@ -233,19 +244,12 @@ def init_db():
 
     c.execute("PRAGMA table_info(adhkar_reminders)")
     reminder_cols = [row[1] for row in c.fetchall()]
-
     if "morning_time" not in reminder_cols:
-        c.execute(
-            f"ALTER TABLE adhkar_reminders ADD COLUMN morning_time TEXT DEFAULT '{DEFAULT_MORNING_ADHKAR_TIME}'"
-        )
+        c.execute(f"ALTER TABLE adhkar_reminders ADD COLUMN morning_time TEXT DEFAULT '{DEFAULT_MORNING_ADHKAR_TIME}'")
     if "evening_time" not in reminder_cols:
-        c.execute(
-            f"ALTER TABLE adhkar_reminders ADD COLUMN evening_time TEXT DEFAULT '{DEFAULT_EVENING_ADHKAR_TIME}'"
-        )
+        c.execute(f"ALTER TABLE adhkar_reminders ADD COLUMN evening_time TEXT DEFAULT '{DEFAULT_EVENING_ADHKAR_TIME}'")
     if "timezone" not in reminder_cols:
-        c.execute(
-            f"ALTER TABLE adhkar_reminders ADD COLUMN timezone TEXT DEFAULT '{safe_timezone(DEFAULT_USER_TIMEZONE)}'"
-        )
+        c.execute(f"ALTER TABLE adhkar_reminders ADD COLUMN timezone TEXT DEFAULT '{safe_timezone(DEFAULT_USER_TIMEZONE)}'")
     if "last_morning_sent" not in reminder_cols:
         c.execute("ALTER TABLE adhkar_reminders ADD COLUMN last_morning_sent TEXT DEFAULT ''")
     if "last_evening_sent" not in reminder_cols:
@@ -568,6 +572,135 @@ def channel_posts_count_by_type(post_type):
     count = c.fetchone()[0]
     conn.close()
     return count
+
+
+# =====================================================
+# Pending Channel Posts
+# =====================================================
+
+def create_pending_channel_post(post_type, text, item_id=None, source="auto"):
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    c.execute(
+        """
+        INSERT INTO pending_channel_posts(post_type, item_id, text, source, created_at)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (post_type, str(item_id or ""), text, source, now_timestamp())
+    )
+
+    pending_id = c.lastrowid
+    conn.commit()
+    conn.close()
+
+    return pending_id
+
+
+def get_pending_channel_post(pending_id):
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    c.execute(
+        """
+        SELECT id, post_type, item_id, text, source, created_at
+        FROM pending_channel_posts
+        WHERE id=?
+        """,
+        (pending_id,)
+    )
+
+    row = c.fetchone()
+    conn.close()
+
+    if not row:
+        return None
+
+    return {
+        "id": row[0],
+        "post_type": row[1],
+        "item_id": row[2],
+        "text": row[3],
+        "source": row[4],
+        "created_at": row[5],
+    }
+
+
+def delete_pending_channel_post(pending_id):
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("DELETE FROM pending_channel_posts WHERE id=?", (pending_id,))
+    conn.commit()
+    conn.close()
+
+
+def pending_channel_posts_count():
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM pending_channel_posts")
+    count = c.fetchone()[0]
+    conn.close()
+    return count
+
+
+def pending_type_title(post_type):
+    titles = {
+        "hadith": "🕊️ حديث اليوم",
+        "quran": "📖 آية اليوم",
+        "mixed": "📩 آية + حديث",
+        "custom": "✍️ رسالة مخصصة",
+    }
+    return titles.get(post_type, post_type)
+
+
+def pending_approval_keyboard(pending_id):
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("✅ انشر الآن", callback_data=f"pending_publish_{pending_id}")],
+        [InlineKeyboardButton("🔄 غيّر المحتوى", callback_data=f"pending_regen_{pending_id}")],
+        [InlineKeyboardButton("❌ إلغاء", callback_data=f"pending_cancel_{pending_id}")],
+    ])
+
+
+async def send_pending_preview(context, post_type, text, item_id=None, source="auto"):
+    if not ADMIN_ID:
+        await send_channel_message(context, text, post_type, item_id, source)
+        return
+
+    pending_id = create_pending_channel_post(post_type, text, item_id, source)
+
+    preview = f"""📋 <b>معاينة منشور القناة</b>
+
+النوع: <b>{esc(pending_type_title(post_type))}</b>
+Pending ID: <code>{pending_id}</code>
+
+هل تريد نشر هذا المحتوى في القناة؟
+
+━━━━━━━━━━━━━━
+
+{text}
+"""
+
+    await context.bot.send_message(
+        chat_id=ADMIN_ID,
+        text=preview,
+        reply_markup=pending_approval_keyboard(pending_id),
+        parse_mode="HTML",
+        disable_web_page_preview=True
+    )
+
+
+def generate_channel_post_by_type(post_type):
+    if post_type == "hadith":
+        text, item_id = hadith_channel_message()
+        return text, item_id
+    if post_type == "quran":
+        text, item_id = quran_channel_message()
+        return text, item_id
+    if post_type == "mixed":
+        text, item_id = mixed_channel_message()
+        return text, item_id
+
+    return "❌ نوع منشور غير معروف.", ""
 
 
 # =====================================================
@@ -1491,28 +1624,28 @@ async def test_channel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def auto_publish_hadith(context: ContextTypes.DEFAULT_TYPE):
     try:
         text, hid = hadith_channel_message()
-        await send_channel_message(context, text, "hadith", hid, "auto_hadith")
-        print("✅ Auto hadith sent.")
+        await send_pending_preview(context, "hadith", text, hid, "auto_hadith_pending")
+        print("📋 Hadith preview sent to admin.")
     except Exception as e:
-        print(f"❌ Auto hadith error: {e}")
+        print(f"❌ Auto hadith preview error: {e}")
 
 
 async def auto_publish_quran(context: ContextTypes.DEFAULT_TYPE):
     try:
         text, ayah_ref = quran_channel_message()
-        await send_channel_message(context, text, "quran", ayah_ref, "auto_quran")
-        print("✅ Auto quran sent.")
+        await send_pending_preview(context, "quran", text, ayah_ref, "auto_quran_pending")
+        print("📋 Quran preview sent to admin.")
     except Exception as e:
-        print(f"❌ Auto quran error: {e}")
+        print(f"❌ Auto quran preview error: {e}")
 
 
 async def auto_publish_mixed(context: ContextTypes.DEFAULT_TYPE):
     try:
         text, item_id = mixed_channel_message()
-        await send_channel_message(context, text, "mixed", item_id, "auto_mixed")
-        print("✅ Auto mixed sent.")
+        await send_pending_preview(context, "mixed", text, item_id, "auto_mixed_pending")
+        print("📋 Mixed preview sent to admin.")
     except Exception as e:
-        print(f"❌ Auto mixed error: {e}")
+        print(f"❌ Auto mixed preview error: {e}")
 
 
 # =====================================================
@@ -1591,7 +1724,96 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     data = q.data
 
-    if data == "home":
+    if data.startswith("pending_publish_"):
+        if not is_admin(user_id):
+            await q.answer("غير مسموح", show_alert=True)
+            return
+
+        pending_id = int(data.replace("pending_publish_", "", 1))
+        pending = get_pending_channel_post(pending_id)
+
+        if not pending:
+            await safe_edit(q, "❌ هذا المنشور غير موجود أو تم التعامل معه سابقًا.", admin_menu())
+            return
+
+        await send_channel_message(
+            context=context,
+            text=pending["text"],
+            post_type=pending["post_type"],
+            item_id=pending["item_id"],
+            source=f"approved_{pending['source']}"
+        )
+
+        delete_pending_channel_post(pending_id)
+
+        await safe_edit(
+            q,
+            f"✅ <b>تم نشر المنشور في القناة.</b>\n\nالنوع: {esc(pending_type_title(pending['post_type']))}",
+            admin_menu()
+        )
+
+    elif data.startswith("pending_cancel_"):
+        if not is_admin(user_id):
+            await q.answer("غير مسموح", show_alert=True)
+            return
+
+        pending_id = int(data.replace("pending_cancel_", "", 1))
+        pending = get_pending_channel_post(pending_id)
+
+        if not pending:
+            await safe_edit(q, "❌ هذا المنشور غير موجود أو تم التعامل معه سابقًا.", admin_menu())
+            return
+
+        delete_pending_channel_post(pending_id)
+
+        await safe_edit(
+            q,
+            f"❌ <b>تم إلغاء المنشور.</b>\n\nالنوع: {esc(pending_type_title(pending['post_type']))}",
+            admin_menu()
+        )
+
+    elif data.startswith("pending_regen_"):
+        if not is_admin(user_id):
+            await q.answer("غير مسموح", show_alert=True)
+            return
+
+        pending_id = int(data.replace("pending_regen_", "", 1))
+        pending = get_pending_channel_post(pending_id)
+
+        if not pending:
+            await safe_edit(q, "❌ هذا المنشور غير موجود أو تم التعامل معه سابقًا.", admin_menu())
+            return
+
+        post_type = pending["post_type"]
+        delete_pending_channel_post(pending_id)
+
+        new_text, new_item_id = generate_channel_post_by_type(post_type)
+        new_pending_id = create_pending_channel_post(
+            post_type=post_type,
+            text=new_text,
+            item_id=new_item_id,
+            source=f"regen_{pending['source']}"
+        )
+
+        preview = f"""📋 <b>معاينة منشور جديد</b>
+
+النوع: <b>{esc(pending_type_title(post_type))}</b>
+Pending ID: <code>{new_pending_id}</code>
+
+تم تغيير المحتوى. هل تريد نشر النسخة الجديدة؟
+
+━━━━━━━━━━━━━━
+
+{new_text}
+"""
+
+        await safe_edit(
+            q,
+            preview,
+            pending_approval_keyboard(new_pending_id)
+        )
+
+    elif data == "home":
         await safe_edit(q, "🌉 <b>Ummah Bridge</b>\n\nاختر من القائمة:", main_menu(user_id))
 
     elif data == "quran":
@@ -1853,6 +2075,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🤲 يحتوي البوت على أذكار الصباح والمساء بلغات متعددة مع عداد تكرار.
 🔥 ويحتوي على إنجاز يومي وسلسلة أيام للأذكار.
 ⏰ ويمكن لكل مستخدم اختيار وقت التذكير والمنطقة الزمنية الخاصة به.
+✅ النشر التلقائي للقناة يتم بعد موافقة الأدمن.
 
 🌍 Telegram:
 {esc(CHANNEL_ID)}
@@ -1914,6 +2137,8 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 📖 <b>منشورات القرآن:</b> {channel_posts_count_by_type("quran")}
 📩 <b>منشورات آية + حديث:</b> {channel_posts_count_by_type("mixed")}
 
+📋 <b>منشورات بانتظار الموافقة:</b> {pending_channel_posts_count()}
+
 🤲 <b>مشتركو تذكير الصباح:</b> {morning_count}
 🤲 <b>مشتركو تذكير المساء:</b> {evening_count}
 
@@ -1921,6 +2146,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🔥 <b>إنجاز يومي + Streak:</b> مفعّل
 ⏰ <b>التذكير الشخصي:</b> مفعّل
 🌍 <b>المنطقة الزمنية لكل مستخدم:</b> مفعّلة
+✅ <b>مراجعة قبل النشر التلقائي:</b> مفعّلة
 🟢 <b>زر WhatsApp:</b> {"مفعّل" if WHATSAPP_CHANNEL_URL else "غير مفعّل"}
 
 ⏰ <b>الأوقات الافتراضية للمستخدم الجديد:</b>
@@ -2076,7 +2302,7 @@ def main():
         first=10
     )
 
-    print("Bot running with WhatsApp button + personal reminders + timezones + adhkar streaks...")
+    print("Bot running with approval before auto channel publishing...")
     print(f"Hadith post time: {HADITH_POST_TIME}")
     print(f"Quran post time: {QURAN_POST_TIME}")
     print(f"Mixed post time: {MIXED_POST_TIME}")
@@ -2086,6 +2312,7 @@ def main():
     print(f"WhatsApp channel enabled: {bool(WHATSAPP_CHANNEL_URL)}")
     print("Personal reminders checker: every 60 seconds")
     print("Adhkar completion + streak system: enabled")
+    print("Auto channel publishing approval: enabled")
 
     app.run_polling()
 
