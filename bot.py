@@ -1,3 +1,14 @@
+# bot.py
+# Ummah Bridge Bot
+# Features:
+# - Telegram channel posting: Hadith, Quran Ayah, Dua
+# - Admin approval before automatic posts
+# - WhatsApp channel button
+# - Morning/evening adhkar with multilingual support from adhkar_data.py
+# - Personal adhkar reminder time + timezone per user
+# - Adhkar completion + streaks
+# - Manual Islamic quiz from admin panel, answered inside the bot
+
 import os
 import random
 import sqlite3
@@ -32,6 +43,8 @@ from adhkar_data import (
 # =====================================================
 
 TOKEN = os.environ.get("BOT_TOKEN")
+BOT_USERNAME = os.environ.get("BOT_USERNAME", "Ummahbridgebot").replace("@", "").strip()
+
 CHANNEL_ID = os.environ.get("CHANNEL_ID", "@UMMAHBRIDGE")
 WHATSAPP_CHANNEL_URL = os.environ.get("WHATSAPP_CHANNEL_URL", "")
 ADMIN_ID = int(os.environ.get("ADMIN_ID", "0"))
@@ -226,6 +239,18 @@ def init_db():
     )
     """)
 
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS quiz_answers(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        quiz_id TEXT NOT NULL,
+        selected INTEGER NOT NULL,
+        correct INTEGER NOT NULL,
+        answered_at INTEGER NOT NULL,
+        UNIQUE(user_id, quiz_id)
+    )
+    """)
+
     c.execute("PRAGMA table_info(users)")
     user_cols = [row[1] for row in c.fetchall()]
     if "adhkar_lang" not in user_cols:
@@ -286,10 +311,8 @@ def add_user(user_id):
 def users_count():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-
     c.execute("SELECT COUNT(*) FROM users")
     count = c.fetchone()[0]
-
     conn.close()
     return count
 
@@ -297,10 +320,8 @@ def users_count():
 def get_adhkar_lang(user_id):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-
     c.execute("SELECT adhkar_lang FROM users WHERE user_id=?", (user_id,))
     row = c.fetchone()
-
     conn.close()
 
     if not row or not row[0]:
@@ -318,9 +339,7 @@ def set_adhkar_lang(user_id, lang):
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-
     c.execute("UPDATE users SET adhkar_lang=? WHERE user_id=?", (lang, user_id))
-
     conn.commit()
     conn.close()
 
@@ -341,10 +360,8 @@ def save_hadith(user_id, text):
 def saved_count():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-
     c.execute("SELECT COUNT(*) FROM saved")
     count = c.fetchone()[0]
-
     conn.close()
     return count
 
@@ -458,7 +475,6 @@ def set_user_timezone(user_id, chat_id, timezone_name):
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-
     c.execute(
         "UPDATE adhkar_reminders SET timezone=?, chat_id=? WHERE user_id=?",
         (timezone_name, chat_id, user_id)
@@ -586,10 +602,8 @@ def log_channel_post(post_type="hadith", item_id=None, source="bot"):
 def channel_posts_count():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-
     c.execute("SELECT COUNT(*) FROM channel_posts")
     count = c.fetchone()[0]
-
     conn.close()
     return count
 
@@ -597,10 +611,8 @@ def channel_posts_count():
 def channel_posts_count_by_type(post_type):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-
     c.execute("SELECT COUNT(*) FROM channel_posts WHERE post_type=?", (post_type,))
     count = c.fetchone()[0]
-
     conn.close()
     return count
 
@@ -661,9 +673,7 @@ def get_pending_channel_post(pending_id):
 def delete_pending_channel_post(pending_id):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-
     c.execute("DELETE FROM pending_channel_posts WHERE id=?", (pending_id,))
-
     conn.commit()
     conn.close()
 
@@ -671,10 +681,8 @@ def delete_pending_channel_post(pending_id):
 def pending_channel_posts_count():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-
     c.execute("SELECT COUNT(*) FROM pending_channel_posts")
     count = c.fetchone()[0]
-
     conn.close()
     return count
 
@@ -686,7 +694,6 @@ def pending_type_title(post_type):
         "dua": "🤲 دعاء اليوم",
         "custom": "✍️ رسالة مخصصة",
     }
-
     return titles.get(post_type, post_type)
 
 
@@ -877,10 +884,8 @@ def record_adhkar_completion(user_id, chat_id, kind):
 def adhkar_completions_count():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-
     c.execute("SELECT COUNT(*) FROM adhkar_completions")
     count = c.fetchone()[0]
-
     conn.close()
     return count
 
@@ -1128,14 +1133,14 @@ DAILY_DUAS = [
         "id": "quran_3_8",
         "ar": "رَبَّنَا لَا تُزِغْ قُلُوبَنَا بَعْدَ إِذْ هَدَيْتَنَا وَهَبْ لَنَا مِنْ لَدُنْكَ رَحْمَةً إِنَّكَ أَنْتَ الْوَهَّابُ.",
         "en": "Our Lord, do not let our hearts deviate after You have guided us, and grant us mercy from Yourself. Indeed, You are the Bestower.",
-        "de": "Unser Herr, lass unsere Herzen nicht abweichen, nachdem Du uns rechtgeleitet hast, und schenke uns Barmherzigkeit von Dir. Gewiss, Du bist der Schenkende.",
+        "de": "Unser Herr, lass unsere Herzen nicht abweichen, nachdem Du uns rechtgeleitet hast, und schenke uns Barmherzigkeit von Dir.",
         "source": "القرآن الكريم 3:8",
     },
     {
         "id": "quran_7_23",
         "ar": "رَبَّنَا ظَلَمْنَا أَنْفُسَنَا وَإِنْ لَمْ تَغْفِرْ لَنَا وَتَرْحَمْنَا لَنَكُونَنَّ مِنَ الْخَاسِرِينَ.",
         "en": "Our Lord, we have wronged ourselves. If You do not forgive us and have mercy on us, we will surely be among the losers.",
-        "de": "Unser Herr, wir haben uns selbst Unrecht getan. Wenn Du uns nicht vergibst und Dich unser erbarmst, werden wir gewiss zu den Verlierern gehören.",
+        "de": "Unser Herr, wir haben uns selbst Unrecht getan. Wenn Du uns nicht vergibst und Dich unser erbarmst, werden wir zu den Verlierern gehören.",
         "source": "القرآن الكريم 7:23",
     },
     {
@@ -1146,45 +1151,17 @@ DAILY_DUAS = [
         "source": "القرآن الكريم 20:114",
     },
     {
-        "id": "quran_23_97_98",
-        "ar": "رَبِّ أَعُوذُ بِكَ مِنْ هَمَزَاتِ الشَّيَاطِينِ، وَأَعُوذُ بِكَ رَبِّ أَنْ يَحْضُرُونِ.",
-        "en": "My Lord, I seek refuge in You from the incitements of the devils, and I seek refuge in You, my Lord, lest they be present with me.",
-        "de": "Mein Herr, ich suche Zuflucht bei Dir vor den Einflüsterungen der Satane, und ich suche Zuflucht bei Dir, mein Herr, davor, dass sie bei mir anwesend sind.",
-        "source": "القرآن الكريم 23:97-98",
-    },
-    {
         "id": "quran_25_74",
         "ar": "رَبَّنَا هَبْ لَنَا مِنْ أَزْوَاجِنَا وَذُرِّيَّاتِنَا قُرَّةَ أَعْيُنٍ وَاجْعَلْنَا لِلْمُتَّقِينَ إِمَامًا.",
         "en": "Our Lord, grant us from our spouses and offspring comfort to our eyes, and make us leaders for the righteous.",
-        "de": "Unser Herr, schenke uns an unseren Ehepartnern und Nachkommen Freude für die Augen und mache uns zu Vorbildern für die Gottesfürchtigen.",
+        "de": "Unser Herr, schenke uns an unseren Ehepartnern und Nachkommen Freude und mache uns zu Vorbildern für die Gottesfürchtigen.",
         "source": "القرآن الكريم 25:74",
-    },
-    {
-        "id": "quran_28_24",
-        "ar": "رَبِّ إِنِّي لِمَا أَنْزَلْتَ إِلَيَّ مِنْ خَيْرٍ فَقِيرٌ.",
-        "en": "My Lord, indeed I am in need of whatever good You send down to me.",
-        "de": "Mein Herr, ich bin wahrlich bedürftig nach allem Guten, das Du zu mir herabsendest.",
-        "source": "القرآن الكريم 28:24",
-    },
-    {
-        "id": "quran_59_10",
-        "ar": "رَبَّنَا اغْفِرْ لَنَا وَلِإِخْوَانِنَا الَّذِينَ سَبَقُونَا بِالْإِيمَانِ وَلَا تَجْعَلْ فِي قُلُوبِنَا غِلًّا لِلَّذِينَ آمَنُوا.",
-        "en": "Our Lord, forgive us and our brothers who preceded us in faith, and do not place in our hearts any resentment toward those who believe.",
-        "de": "Unser Herr, vergib uns und unseren Geschwistern, die uns im Glauben vorausgegangen sind, und lege in unsere Herzen keinen Groll gegen die Gläubigen.",
-        "source": "القرآن الكريم 59:10",
     },
     {
         "id": "dua_forgiveness",
         "ar": "اللَّهُمَّ إِنَّكَ عَفُوٌّ تُحِبُّ الْعَفْوَ فَاعْفُ عَنِّي.",
         "en": "O Allah, You are Pardoning and You love pardon, so pardon me.",
         "de": "O Allah, Du bist vergebend und liebst die Vergebung, so vergib mir.",
-        "source": "دعاء مأثور",
-    },
-    {
-        "id": "dua_guidance",
-        "ar": "اللَّهُمَّ اهْدِنِي وَسَدِّدْنِي.",
-        "en": "O Allah, guide me and keep me steadfast upon what is right.",
-        "de": "O Allah, leite mich recht und festige mich auf dem Richtigen.",
         "source": "دعاء مأثور",
     },
 ]
@@ -1226,6 +1203,181 @@ def dua_channel_message():
 
     except Exception as e:
         return f"❌ خطأ في بناء رسالة الدعاء:\n<code>{esc(e)}</code>", None
+
+
+# =====================================================
+# Islamic Quiz
+# =====================================================
+
+DAILY_QUIZZES = [
+    {
+        "id": "q001",
+        "question": "ما أول سورة في القرآن الكريم؟",
+        "choices": ["البقرة", "الفاتحة", "الإخلاص", "الناس"],
+        "correct": 1,
+        "explanation": "أول سورة في ترتيب المصحف هي سورة الفاتحة.",
+    },
+    {
+        "id": "q002",
+        "question": "كم عدد أركان الإسلام؟",
+        "choices": ["ثلاثة", "أربعة", "خمسة", "ستة"],
+        "correct": 2,
+        "explanation": "أركان الإسلام خمسة: الشهادتان، الصلاة، الزكاة، الصوم، والحج.",
+    },
+    {
+        "id": "q003",
+        "question": "ما الشهر الذي يصومه المسلمون؟",
+        "choices": ["محرم", "رجب", "رمضان", "شوال"],
+        "correct": 2,
+        "explanation": "فرض الله صيام شهر رمضان على المسلمين.",
+    },
+    {
+        "id": "q004",
+        "question": "ما قبلة المسلمين في الصلاة؟",
+        "choices": ["المسجد النبوي", "المسجد الأقصى", "الكعبة", "غار حراء"],
+        "correct": 2,
+        "explanation": "قبلة المسلمين هي الكعبة المشرفة في مكة.",
+    },
+    {
+        "id": "q005",
+        "question": "من هو خاتم الأنبياء والمرسلين؟",
+        "choices": ["موسى عليه السلام", "عيسى عليه السلام", "إبراهيم عليه السلام", "محمد ﷺ"],
+        "correct": 3,
+        "explanation": "النبي محمد ﷺ هو خاتم الأنبياء والمرسلين.",
+    },
+    {
+        "id": "q006",
+        "question": "كم عدد الصلوات المفروضة في اليوم والليلة؟",
+        "choices": ["ثلاث", "أربع", "خمس", "ست"],
+        "correct": 2,
+        "explanation": "الصلوات المفروضة خمس صلوات في اليوم والليلة.",
+    },
+    {
+        "id": "q007",
+        "question": "ما أطول سورة في القرآن؟",
+        "choices": ["آل عمران", "البقرة", "النساء", "المائدة"],
+        "correct": 1,
+        "explanation": "أطول سورة في القرآن الكريم هي سورة البقرة.",
+    },
+    {
+        "id": "q008",
+        "question": "ما أول ركن من أركان الإسلام؟",
+        "choices": ["الصلاة", "الزكاة", "الشهادتان", "الحج"],
+        "correct": 2,
+        "explanation": "أول ركن من أركان الإسلام هو شهادة أن لا إله إلا الله وأن محمدًا رسول الله.",
+    },
+]
+
+
+def get_quiz_by_id(quiz_id):
+    for quiz in DAILY_QUIZZES:
+        if quiz["id"] == quiz_id:
+            return quiz
+    return None
+
+
+def random_quiz():
+    return random.choice(DAILY_QUIZZES)
+
+
+def quiz_start_url(quiz_id):
+    return f"https://t.me/{BOT_USERNAME}?start=quiz_{quiz_id}"
+
+
+def quiz_channel_message(quiz=None):
+    quiz = quiz or random_quiz()
+    letters = ["A", "B", "C", "D"]
+
+    choices_text = ""
+    for i, choice in enumerate(quiz["choices"]):
+        choices_text += f"{letters[i]}) {esc(choice)}\n"
+
+    text = f"""🧠 <b>سؤال إسلامي</b>
+
+{esc(quiz["question"])}
+
+{choices_text}
+━━━━━━━━━━━━━━
+
+اضغط الزر للإجابة داخل البوت ومعرفة النتيجة.
+🌍 {esc(CHANNEL_ID)}
+"""
+
+    return text, quiz["id"]
+
+
+def quiz_channel_keyboard(quiz_id):
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🧠 أجب في البوت", url=quiz_start_url(quiz_id))]
+    ])
+
+
+def render_quiz_question(quiz):
+    letters = ["A", "B", "C", "D"]
+    buttons = []
+
+    for i, choice in enumerate(quiz["choices"]):
+        buttons.append([
+            InlineKeyboardButton(
+                f"{letters[i]}) {choice}",
+                callback_data=f"quiz_answer_{quiz['id']}_{i}"
+            )
+        ])
+
+    buttons.append([InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")])
+
+    text = f"""🧠 <b>سؤال إسلامي</b>
+
+{esc(quiz["question"])}
+
+اختر الإجابة:
+"""
+
+    return text, InlineKeyboardMarkup(buttons)
+
+
+def record_quiz_answer(user_id, quiz_id, selected, correct):
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    c.execute(
+        """
+        INSERT OR IGNORE INTO quiz_answers(
+            user_id,
+            quiz_id,
+            selected,
+            correct,
+            answered_at
+        )
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (user_id, quiz_id, selected, 1 if correct else 0, now_timestamp())
+    )
+
+    inserted = c.rowcount == 1
+
+    conn.commit()
+    conn.close()
+
+    return inserted
+
+
+def quiz_answers_count():
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM quiz_answers")
+    count = c.fetchone()[0]
+    conn.close()
+    return count
+
+
+def quiz_correct_answers_count():
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM quiz_answers WHERE correct=1")
+    count = c.fetchone()[0]
+    conn.close()
+    return count
 
 
 # =====================================================
@@ -1386,6 +1538,7 @@ def admin_menu():
         [InlineKeyboardButton("🕊️ نشر حديث الآن", callback_data="admin_post_hadith")],
         [InlineKeyboardButton("📖 نشر آية الآن", callback_data="admin_post_quran")],
         [InlineKeyboardButton("🤲 نشر دعاء الآن", callback_data="admin_post_dua")],
+        [InlineKeyboardButton("🧠 نشر سؤال إسلامي", callback_data="admin_post_quiz")],
         [InlineKeyboardButton("📊 الإحصائيات", callback_data="admin_stats")],
         [InlineKeyboardButton("✍️ إرسال رسالة مخصصة للقناة", callback_data="admin_custom_post")],
         [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")]
@@ -1705,10 +1858,11 @@ async def safe_edit(q, text, markup=None):
         )
 
 
-async def send_channel_message(context, text, post_type, item_id, source):
+async def send_channel_message(context, text, post_type, item_id, source, reply_markup=None):
     await context.bot.send_message(
         chat_id=CHANNEL_ID,
         text=text,
+        reply_markup=reply_markup,
         parse_mode="HTML",
         disable_web_page_preview=True
     )
@@ -1720,12 +1874,47 @@ async def send_channel_message(context, text, post_type, item_id, source):
 # Commands
 # =====================================================
 
+async def show_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE, quiz_id: str):
+    user_id = update.effective_user.id
+    chat_id = update.effective_chat.id
+
+    add_user(user_id)
+    ensure_adhkar_reminder_row(user_id, chat_id)
+
+    quiz = get_quiz_by_id(quiz_id)
+
+    if not quiz:
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="❌ لم يتم العثور على السؤال.",
+            reply_markup=main_menu(user_id),
+            parse_mode="HTML"
+        )
+        return
+
+    text, markup = render_quiz_question(quiz)
+
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text=text,
+        reply_markup=markup,
+        parse_mode="HTML"
+    )
+
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     chat_id = update.message.chat_id
 
     add_user(user_id)
     ensure_adhkar_reminder_row(user_id, chat_id)
+
+    if context.args:
+        payload = context.args[0]
+        if payload.startswith("quiz_"):
+            quiz_id = payload.replace("quiz_", "", 1)
+            await show_quiz(update, context, quiz_id)
+            return
 
     await update.message.reply_text(
         "🌉 <b>مرحبًا بك في Ummah Bridge</b>\n\nاختر من القائمة:",
@@ -1904,7 +2093,61 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     data = q.data
 
-    if data.startswith("pending_publish_"):
+    if data.startswith("quiz_answer_"):
+        parts = data.split("_")
+        quiz_id = parts[2]
+        selected = int(parts[3])
+
+        quiz = get_quiz_by_id(quiz_id)
+
+        if not quiz:
+            await safe_edit(q, "❌ لم يتم العثور على السؤال.", main_menu(user_id))
+            return
+
+        correct_index = quiz["correct"]
+        is_correct = selected == correct_index
+        inserted = record_quiz_answer(user_id, quiz_id, selected, is_correct)
+
+        letters = ["A", "B", "C", "D"]
+        selected_text = quiz["choices"][selected]
+        correct_text = quiz["choices"][correct_index]
+
+        if is_correct:
+            result = "✅ <b>إجابة صحيحة</b>"
+        else:
+            result = "❌ <b>إجابة غير صحيحة</b>"
+
+        already = ""
+        if not inserted:
+            already = "\n\nℹ️ <i>لقد أجبت على هذا السؤال من قبل. لم يتم احتساب الإجابة مرة ثانية.</i>"
+
+        text = f"""🧠 <b>نتيجة السؤال</b>
+
+{result}
+
+<b>السؤال:</b>
+{esc(quiz["question"])}
+
+<b>إجابتك:</b>
+{letters[selected]}) {esc(selected_text)}
+
+<b>الإجابة الصحيحة:</b>
+{letters[correct_index]}) {esc(correct_text)}
+
+💡 <b>الشرح:</b>
+{esc(quiz["explanation"])}
+{already}
+"""
+
+        await safe_edit(
+            q,
+            text,
+            InlineKeyboardMarkup([
+                [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")]
+            ])
+        )
+
+    elif data.startswith("pending_publish_"):
         if not is_admin(user_id):
             await q.answer("غير مسموح", show_alert=True)
             return
@@ -2313,6 +2556,7 @@ Pending ID: <code>{new_pending_id}</code>
 🕊️ حديث اليوم.
 📖 آية اليوم.
 🤲 دعاء اليوم.
+🧠 سؤال إسلامي تفاعلي.
 
 🤲 يحتوي البوت على أذكار الصباح والمساء بلغات متعددة مع عداد تكرار.
 🔥 ويحتوي على إنجاز يومي وسلسلة أيام للأذكار.
@@ -2390,6 +2634,29 @@ Pending ID: <code>{new_pending_id}</code>
 
         await safe_edit(q, "✅ <b>تم نشر دعاء في القناة.</b>", admin_menu())
 
+    elif data == "admin_post_quiz":
+        if not is_admin(user_id):
+            await q.answer("غير مسموح", show_alert=True)
+            return
+
+        quiz = random_quiz()
+        text, quiz_id = quiz_channel_message(quiz)
+
+        await send_channel_message(
+            context=context,
+            text=text,
+            post_type="quiz",
+            item_id=quiz_id,
+            source="admin_manual_quiz",
+            reply_markup=quiz_channel_keyboard(quiz_id)
+        )
+
+        await safe_edit(
+            q,
+            f"✅ <b>تم نشر السؤال الإسلامي في القناة.</b>\n\nQuiz ID: <code>{esc(quiz_id)}</code>",
+            admin_menu()
+        )
+
     elif data == "admin_stats":
         if not is_admin(user_id):
             await q.answer("غير مسموح", show_alert=True)
@@ -2397,6 +2664,9 @@ Pending ID: <code>{new_pending_id}</code>
 
         morning_count = len(get_adhkar_subscribers("morning"))
         evening_count = len(get_adhkar_subscribers("evening"))
+
+        total_quiz_answers = quiz_answers_count()
+        correct_quiz_answers = quiz_correct_answers_count()
 
         await safe_edit(
             q,
@@ -2410,6 +2680,10 @@ Pending ID: <code>{new_pending_id}</code>
 🕊️ <b>منشورات الحديث:</b> {channel_posts_count_by_type("hadith")}
 📖 <b>منشورات القرآن:</b> {channel_posts_count_by_type("quran")}
 🤲 <b>منشورات الدعاء:</b> {channel_posts_count_by_type("dua")}
+🧠 <b>منشورات الأسئلة:</b> {channel_posts_count_by_type("quiz")}
+
+🧠 <b>إجابات الأسئلة:</b> {total_quiz_answers}
+✅ <b>الإجابات الصحيحة:</b> {correct_quiz_answers}
 
 📋 <b>منشورات بانتظار الموافقة:</b> {pending_channel_posts_count()}
 
@@ -2421,6 +2695,7 @@ Pending ID: <code>{new_pending_id}</code>
 ⏰ <b>التذكير الشخصي:</b> مفعّل
 🌍 <b>المنطقة الزمنية لكل مستخدم:</b> مفعّلة
 ✅ <b>مراجعة قبل النشر التلقائي:</b> مفعّلة
+🧠 <b>سؤال إسلامي تفاعلي:</b> مفعّل
 🟢 <b>زر WhatsApp:</b> {"مفعّل" if WHATSAPP_CHANNEL_URL else "غير مفعّل"}
 
 ⏰ <b>أوقات النشر التلقائي:</b>
@@ -2433,6 +2708,7 @@ Pending ID: <code>{new_pending_id}</code>
 • مساء: <code>{esc(DEFAULT_EVENING_ADHKAR_TIME)}</code>
 • Timezone: <code>{esc(safe_timezone(DEFAULT_USER_TIMEZONE))}</code>
 
+🤖 <b>Bot username:</b> @{esc(BOT_USERNAME)}
 🌐 <b>القناة:</b> {esc(CHANNEL_ID)}
 """,
             admin_menu()
@@ -2587,7 +2863,8 @@ def main():
         first=10
     )
 
-    print("Bot running with Hadith + Quran + Dua only.")
+    print("Bot running with Hadith + Quran + Dua + Interactive Islamic Quiz.")
+    print(f"Bot username: @{BOT_USERNAME}")
     print(f"Hadith post time: {HADITH_POST_TIME}")
     print(f"Dua post time: {DUA_POST_TIME}")
     print(f"Quran post time: {QURAN_POST_TIME}")
@@ -2598,7 +2875,7 @@ def main():
     print("Personal reminders checker: every 60 seconds")
     print("Adhkar completion + streak system: enabled")
     print("Auto channel publishing approval: enabled")
-    print("Mixed post removed: enabled")
+    print("Manual Islamic quiz: enabled")
 
     app.run_polling()
 
