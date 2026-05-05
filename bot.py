@@ -38,7 +38,7 @@ ADMIN_ID = int(os.environ.get("ADMIN_ID", "0"))
 
 HADITH_POST_TIME = os.environ.get("HADITH_POST_TIME", "09:00")
 QURAN_POST_TIME = os.environ.get("QURAN_POST_TIME", "15:00")
-MIXED_POST_TIME = os.environ.get("MIXED_POST_TIME", "21:00")
+DUA_POST_TIME = os.environ.get("DUA_POST_TIME", "12:00")
 
 DEFAULT_USER_TIMEZONE = os.environ.get("DEFAULT_USER_TIMEZONE", "Europe/Berlin")
 
@@ -101,7 +101,11 @@ def is_valid_timezone(tz_name):
 def safe_timezone(tz_name):
     if is_valid_timezone(tz_name):
         return str(tz_name).strip()
-    return DEFAULT_USER_TIMEZONE if is_valid_timezone(DEFAULT_USER_TIMEZONE) else "UTC"
+
+    if is_valid_timezone(DEFAULT_USER_TIMEZONE):
+        return DEFAULT_USER_TIMEZONE
+
+    return "UTC"
 
 
 def user_now(tz_name):
@@ -120,6 +124,7 @@ def user_current_hhmm(tz_name):
 def format_time_from_timestamp(ts):
     if not ts:
         return "غير متوفر"
+
     return datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
 
 
@@ -245,11 +250,17 @@ def init_db():
     c.execute("PRAGMA table_info(adhkar_reminders)")
     reminder_cols = [row[1] for row in c.fetchall()]
     if "morning_time" not in reminder_cols:
-        c.execute(f"ALTER TABLE adhkar_reminders ADD COLUMN morning_time TEXT DEFAULT '{DEFAULT_MORNING_ADHKAR_TIME}'")
+        c.execute(
+            f"ALTER TABLE adhkar_reminders ADD COLUMN morning_time TEXT DEFAULT '{DEFAULT_MORNING_ADHKAR_TIME}'"
+        )
     if "evening_time" not in reminder_cols:
-        c.execute(f"ALTER TABLE adhkar_reminders ADD COLUMN evening_time TEXT DEFAULT '{DEFAULT_EVENING_ADHKAR_TIME}'")
+        c.execute(
+            f"ALTER TABLE adhkar_reminders ADD COLUMN evening_time TEXT DEFAULT '{DEFAULT_EVENING_ADHKAR_TIME}'"
+        )
     if "timezone" not in reminder_cols:
-        c.execute(f"ALTER TABLE adhkar_reminders ADD COLUMN timezone TEXT DEFAULT '{safe_timezone(DEFAULT_USER_TIMEZONE)}'")
+        c.execute(
+            f"ALTER TABLE adhkar_reminders ADD COLUMN timezone TEXT DEFAULT '{safe_timezone(DEFAULT_USER_TIMEZONE)}'"
+        )
     if "last_morning_sent" not in reminder_cols:
         c.execute("ALTER TABLE adhkar_reminders ADD COLUMN last_morning_sent TEXT DEFAULT ''")
     if "last_evening_sent" not in reminder_cols:
@@ -262,10 +273,12 @@ def init_db():
 def add_user(user_id):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
+
     c.execute(
         "INSERT OR IGNORE INTO users(user_id, created_at, adhkar_lang) VALUES(?, ?, 'ar')",
         (user_id, now_timestamp())
     )
+
     conn.commit()
     conn.close()
 
@@ -273,8 +286,10 @@ def add_user(user_id):
 def users_count():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
+
     c.execute("SELECT COUNT(*) FROM users")
     count = c.fetchone()[0]
+
     conn.close()
     return count
 
@@ -282,8 +297,10 @@ def users_count():
 def get_adhkar_lang(user_id):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
+
     c.execute("SELECT adhkar_lang FROM users WHERE user_id=?", (user_id,))
     row = c.fetchone()
+
     conn.close()
 
     if not row or not row[0]:
@@ -301,7 +318,9 @@ def set_adhkar_lang(user_id, lang):
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
+
     c.execute("UPDATE users SET adhkar_lang=? WHERE user_id=?", (lang, user_id))
+
     conn.commit()
     conn.close()
 
@@ -309,10 +328,12 @@ def set_adhkar_lang(user_id, lang):
 def save_hadith(user_id, text):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
+
     c.execute(
         "INSERT INTO saved(user_id, text, created_at) VALUES (?, ?, ?)",
         (user_id, text, now_timestamp())
     )
+
     conn.commit()
     conn.close()
 
@@ -320,8 +341,10 @@ def save_hadith(user_id, text):
 def saved_count():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
+
     c.execute("SELECT COUNT(*) FROM saved")
     count = c.fetchone()[0]
+
     conn.close()
     return count
 
@@ -329,10 +352,12 @@ def saved_count():
 def get_saved_hadiths(user_id, limit=5):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
+
     c.execute(
         "SELECT text, created_at FROM saved WHERE user_id=? ORDER BY created_at DESC LIMIT ?",
         (user_id, limit)
     )
+
     rows = c.fetchall()
     conn.close()
     return rows
@@ -433,10 +458,12 @@ def set_user_timezone(user_id, chat_id, timezone_name):
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
+
     c.execute(
         "UPDATE adhkar_reminders SET timezone=?, chat_id=? WHERE user_id=?",
         (timezone_name, chat_id, user_id)
     )
+
     conn.commit()
     conn.close()
     return True
@@ -559,8 +586,10 @@ def log_channel_post(post_type="hadith", item_id=None, source="bot"):
 def channel_posts_count():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
+
     c.execute("SELECT COUNT(*) FROM channel_posts")
     count = c.fetchone()[0]
+
     conn.close()
     return count
 
@@ -568,8 +597,10 @@ def channel_posts_count():
 def channel_posts_count_by_type(post_type):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
+
     c.execute("SELECT COUNT(*) FROM channel_posts WHERE post_type=?", (post_type,))
     count = c.fetchone()[0]
+
     conn.close()
     return count
 
@@ -591,6 +622,7 @@ def create_pending_channel_post(post_type, text, item_id=None, source="auto"):
     )
 
     pending_id = c.lastrowid
+
     conn.commit()
     conn.close()
 
@@ -629,7 +661,9 @@ def get_pending_channel_post(pending_id):
 def delete_pending_channel_post(pending_id):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
+
     c.execute("DELETE FROM pending_channel_posts WHERE id=?", (pending_id,))
+
     conn.commit()
     conn.close()
 
@@ -637,8 +671,10 @@ def delete_pending_channel_post(pending_id):
 def pending_channel_posts_count():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
+
     c.execute("SELECT COUNT(*) FROM pending_channel_posts")
     count = c.fetchone()[0]
+
     conn.close()
     return count
 
@@ -647,9 +683,10 @@ def pending_type_title(post_type):
     titles = {
         "hadith": "🕊️ حديث اليوم",
         "quran": "📖 آية اليوم",
-        "mixed": "📩 آية + حديث",
+        "dua": "🤲 دعاء اليوم",
         "custom": "✍️ رسالة مخصصة",
     }
+
     return titles.get(post_type, post_type)
 
 
@@ -693,11 +730,13 @@ def generate_channel_post_by_type(post_type):
     if post_type == "hadith":
         text, item_id = hadith_channel_message()
         return text, item_id
+
     if post_type == "quran":
         text, item_id = quran_channel_message()
         return text, item_id
-    if post_type == "mixed":
-        text, item_id = mixed_channel_message()
+
+    if post_type == "dua":
+        text, item_id = dua_channel_message()
         return text, item_id
 
     return "❌ نوع منشور غير معروف.", ""
@@ -725,6 +764,7 @@ def get_completion_dates(user_id, kind):
     conn.close()
 
     dates = []
+
     for row in rows:
         try:
             dates.append(datetime.date.fromisoformat(row[0]))
@@ -1072,18 +1112,120 @@ def quran_channel_message():
         return f"❌ خطأ في بناء رسالة الآية:\n<code>{esc(e)}</code>", None
 
 
-def mixed_channel_message():
-    quran_text, ayah_ref = quran_channel_message()
-    hadith_text, hid = hadith_channel_message()
+# =====================================================
+# Dua of the Day
+# =====================================================
 
-    return f"""📩 <b>رسالة إيمانية | Faith Reminder</b>
+DAILY_DUAS = [
+    {
+        "id": "quran_2_201",
+        "ar": "رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ.",
+        "en": "Our Lord, grant us good in this world and good in the Hereafter, and protect us from the punishment of the Fire.",
+        "de": "Unser Herr, gib uns Gutes im Diesseits und Gutes im Jenseits und bewahre uns vor der Strafe des Feuers.",
+        "source": "القرآن الكريم 2:201",
+    },
+    {
+        "id": "quran_3_8",
+        "ar": "رَبَّنَا لَا تُزِغْ قُلُوبَنَا بَعْدَ إِذْ هَدَيْتَنَا وَهَبْ لَنَا مِنْ لَدُنْكَ رَحْمَةً إِنَّكَ أَنْتَ الْوَهَّابُ.",
+        "en": "Our Lord, do not let our hearts deviate after You have guided us, and grant us mercy from Yourself. Indeed, You are the Bestower.",
+        "de": "Unser Herr, lass unsere Herzen nicht abweichen, nachdem Du uns rechtgeleitet hast, und schenke uns Barmherzigkeit von Dir. Gewiss, Du bist der Schenkende.",
+        "source": "القرآن الكريم 3:8",
+    },
+    {
+        "id": "quran_7_23",
+        "ar": "رَبَّنَا ظَلَمْنَا أَنْفُسَنَا وَإِنْ لَمْ تَغْفِرْ لَنَا وَتَرْحَمْنَا لَنَكُونَنَّ مِنَ الْخَاسِرِينَ.",
+        "en": "Our Lord, we have wronged ourselves. If You do not forgive us and have mercy on us, we will surely be among the losers.",
+        "de": "Unser Herr, wir haben uns selbst Unrecht getan. Wenn Du uns nicht vergibst und Dich unser erbarmst, werden wir gewiss zu den Verlierern gehören.",
+        "source": "القرآن الكريم 7:23",
+    },
+    {
+        "id": "quran_20_114",
+        "ar": "رَبِّ زِدْنِي عِلْمًا.",
+        "en": "My Lord, increase me in knowledge.",
+        "de": "Mein Herr, mehre mein Wissen.",
+        "source": "القرآن الكريم 20:114",
+    },
+    {
+        "id": "quran_23_97_98",
+        "ar": "رَبِّ أَعُوذُ بِكَ مِنْ هَمَزَاتِ الشَّيَاطِينِ، وَأَعُوذُ بِكَ رَبِّ أَنْ يَحْضُرُونِ.",
+        "en": "My Lord, I seek refuge in You from the incitements of the devils, and I seek refuge in You, my Lord, lest they be present with me.",
+        "de": "Mein Herr, ich suche Zuflucht bei Dir vor den Einflüsterungen der Satane, und ich suche Zuflucht bei Dir, mein Herr, davor, dass sie bei mir anwesend sind.",
+        "source": "القرآن الكريم 23:97-98",
+    },
+    {
+        "id": "quran_25_74",
+        "ar": "رَبَّنَا هَبْ لَنَا مِنْ أَزْوَاجِنَا وَذُرِّيَّاتِنَا قُرَّةَ أَعْيُنٍ وَاجْعَلْنَا لِلْمُتَّقِينَ إِمَامًا.",
+        "en": "Our Lord, grant us from our spouses and offspring comfort to our eyes, and make us leaders for the righteous.",
+        "de": "Unser Herr, schenke uns an unseren Ehepartnern und Nachkommen Freude für die Augen und mache uns zu Vorbildern für die Gottesfürchtigen.",
+        "source": "القرآن الكريم 25:74",
+    },
+    {
+        "id": "quran_28_24",
+        "ar": "رَبِّ إِنِّي لِمَا أَنْزَلْتَ إِلَيَّ مِنْ خَيْرٍ فَقِيرٌ.",
+        "en": "My Lord, indeed I am in need of whatever good You send down to me.",
+        "de": "Mein Herr, ich bin wahrlich bedürftig nach allem Guten, das Du zu mir herabsendest.",
+        "source": "القرآن الكريم 28:24",
+    },
+    {
+        "id": "quran_59_10",
+        "ar": "رَبَّنَا اغْفِرْ لَنَا وَلِإِخْوَانِنَا الَّذِينَ سَبَقُونَا بِالْإِيمَانِ وَلَا تَجْعَلْ فِي قُلُوبِنَا غِلًّا لِلَّذِينَ آمَنُوا.",
+        "en": "Our Lord, forgive us and our brothers who preceded us in faith, and do not place in our hearts any resentment toward those who believe.",
+        "de": "Unser Herr, vergib uns und unseren Geschwistern, die uns im Glauben vorausgegangen sind, und lege in unsere Herzen keinen Groll gegen die Gläubigen.",
+        "source": "القرآن الكريم 59:10",
+    },
+    {
+        "id": "dua_forgiveness",
+        "ar": "اللَّهُمَّ إِنَّكَ عَفُوٌّ تُحِبُّ الْعَفْوَ فَاعْفُ عَنِّي.",
+        "en": "O Allah, You are Pardoning and You love pardon, so pardon me.",
+        "de": "O Allah, Du bist vergebend und liebst die Vergebung, so vergib mir.",
+        "source": "دعاء مأثور",
+    },
+    {
+        "id": "dua_guidance",
+        "ar": "اللَّهُمَّ اهْدِنِي وَسَدِّدْنِي.",
+        "en": "O Allah, guide me and keep me steadfast upon what is right.",
+        "de": "O Allah, leite mich recht und festige mich auf dem Richtigen.",
+        "source": "دعاء مأثور",
+    },
+]
 
-{quran_text}
+
+def dua_channel_message():
+    try:
+        dua = random.choice(DAILY_DUAS)
+
+        text = f"""🤲 <b>دعاء اليوم | Dua of the Day | Bittgebet des Tages</b>
 
 ━━━━━━━━━━━━━━
 
-{hadith_text}
-""", f"ayah:{ayah_ref}|hadith:{hid}"
+🇸🇦 <b>العربية</b>
+
+{esc(dua["ar"])}
+
+━━━━━━━━━━━━━━
+
+🇬🇧 <b>English</b>
+
+{esc(dua["en"])}
+
+━━━━━━━━━━━━━━
+
+🇩🇪 <b>Deutsch</b>
+
+{esc(dua["de"])}
+
+━━━━━━━━━━━━━━
+
+📚 <b>المصدر:</b> {esc(dua["source"])}
+🔢 <b>Dua ID:</b> <code>{esc(dua["id"])}</code>
+
+🌍 {esc(CHANNEL_ID)}
+"""
+
+        return text, dua["id"]
+
+    except Exception as e:
+        return f"❌ خطأ في بناء رسالة الدعاء:\n<code>{esc(e)}</code>", None
 
 
 # =====================================================
@@ -1243,7 +1385,7 @@ def admin_menu():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("🕊️ نشر حديث الآن", callback_data="admin_post_hadith")],
         [InlineKeyboardButton("📖 نشر آية الآن", callback_data="admin_post_quran")],
-        [InlineKeyboardButton("📩 نشر آية + حديث", callback_data="admin_post_mixed")],
+        [InlineKeyboardButton("🤲 نشر دعاء الآن", callback_data="admin_post_dua")],
         [InlineKeyboardButton("📊 الإحصائيات", callback_data="admin_stats")],
         [InlineKeyboardButton("✍️ إرسال رسالة مخصصة للقناة", callback_data="admin_custom_post")],
         [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")]
@@ -1457,6 +1599,7 @@ def render_adhkar_counter(kind, index, lang, count):
     translation_note = lang_pack.get("translation_note", "")
 
     progress_bar = "🟩" * count + "⬜" * (repeat_total - count)
+
     if repeat_total > 20:
         filled = int((count / repeat_total) * 10)
         progress_bar = "🟩" * filled + "⬜" * (10 - filled)
@@ -1569,6 +1712,7 @@ async def send_channel_message(context, text, post_type, item_id, source):
         parse_mode="HTML",
         disable_web_page_preview=True
     )
+
     log_channel_post(post_type, item_id, source)
 
 
@@ -1613,7 +1757,15 @@ async def test_channel(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     text, hid = hadith_channel_message()
-    await send_channel_message(context, text, "hadith", hid, "test_command")
+
+    await send_channel_message(
+        context=context,
+        text=text,
+        post_type="hadith",
+        item_id=hid,
+        source="test_command"
+    )
+
     await update.message.reply_text("✅ تم نشر رسالة اختبار في القناة.")
 
 
@@ -1624,8 +1776,17 @@ async def test_channel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def auto_publish_hadith(context: ContextTypes.DEFAULT_TYPE):
     try:
         text, hid = hadith_channel_message()
-        await send_pending_preview(context, "hadith", text, hid, "auto_hadith_pending")
+
+        await send_pending_preview(
+            context=context,
+            post_type="hadith",
+            text=text,
+            item_id=hid,
+            source="auto_hadith_pending"
+        )
+
         print("📋 Hadith preview sent to admin.")
+
     except Exception as e:
         print(f"❌ Auto hadith preview error: {e}")
 
@@ -1633,19 +1794,37 @@ async def auto_publish_hadith(context: ContextTypes.DEFAULT_TYPE):
 async def auto_publish_quran(context: ContextTypes.DEFAULT_TYPE):
     try:
         text, ayah_ref = quran_channel_message()
-        await send_pending_preview(context, "quran", text, ayah_ref, "auto_quran_pending")
+
+        await send_pending_preview(
+            context=context,
+            post_type="quran",
+            text=text,
+            item_id=ayah_ref,
+            source="auto_quran_pending"
+        )
+
         print("📋 Quran preview sent to admin.")
+
     except Exception as e:
         print(f"❌ Auto quran preview error: {e}")
 
 
-async def auto_publish_mixed(context: ContextTypes.DEFAULT_TYPE):
+async def auto_publish_dua(context: ContextTypes.DEFAULT_TYPE):
     try:
-        text, item_id = mixed_channel_message()
-        await send_pending_preview(context, "mixed", text, item_id, "auto_mixed_pending")
-        print("📋 Mixed preview sent to admin.")
+        text, dua_id = dua_channel_message()
+
+        await send_pending_preview(
+            context=context,
+            post_type="dua",
+            text=text,
+            item_id=dua_id,
+            source="auto_dua_pending"
+        )
+
+        print("📋 Dua preview sent to admin.")
+
     except Exception as e:
-        print(f"❌ Auto mixed preview error: {e}")
+        print(f"❌ Auto dua preview error: {e}")
 
 
 # =====================================================
@@ -1719,6 +1898,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = q.from_user.id
     chat_id = q.message.chat_id
+
     add_user(user_id)
     ensure_adhkar_reminder_row(user_id, chat_id)
 
@@ -1788,6 +1968,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         delete_pending_channel_post(pending_id)
 
         new_text, new_item_id = generate_channel_post_by_type(post_type)
+
         new_pending_id = create_pending_channel_post(
             post_type=post_type,
             text=new_text,
@@ -1814,44 +1995,66 @@ Pending ID: <code>{new_pending_id}</code>
         )
 
     elif data == "home":
-        await safe_edit(q, "🌉 <b>Ummah Bridge</b>\n\nاختر من القائمة:", main_menu(user_id))
+        await safe_edit(
+            q,
+            "🌉 <b>Ummah Bridge</b>\n\nاختر من القائمة:",
+            main_menu(user_id)
+        )
 
     elif data == "quran":
         try:
-            res = requests.get(f"{QURAN_API}/surah/1/quran-uthmani", timeout=15)
+            res = requests.get(
+                f"{QURAN_API}/surah/1/quran-uthmani",
+                timeout=15
+            )
             res.raise_for_status()
-            ayat = res.json()["data"]["ayahs"]
 
+            ayat = res.json()["data"]["ayahs"]
             text = "📖 <b>سورة الفاتحة</b>" + line()
+
             for a in ayat:
                 text += f"{esc(a['text'])}\n"
 
             await safe_edit(q, text, back())
+
         except Exception as e:
-            await safe_edit(q, f"❌ خطأ في جلب القرآن:\n<code>{esc(e)}</code>", back())
+            await safe_edit(
+                q,
+                f"❌ خطأ في جلب القرآن:\n<code>{esc(e)}</code>",
+                back()
+            )
 
     elif data == "hadith":
-        await safe_edit(q, "🕊️ <b>قسم الأحاديث</b>", hadith_menu())
+        await safe_edit(
+            q,
+            "🕊️ <b>قسم الأحاديث</b>",
+            hadith_menu()
+        )
 
     elif data == "random":
         h = random_hadith("ar")
         context.user_data["last"] = h
+
         await safe_edit(q, h, hadith_menu())
 
     elif data == "save":
         h = context.user_data.get("last")
+
         if not h:
             await q.answer("لا يوجد حديث لحفظه", show_alert=True)
             return
+
         save_hadith(user_id, h)
         await q.answer("تم الحفظ ✅", show_alert=True)
 
     elif data == "saved":
         rows = get_saved_hadiths(user_id)
+
         if not rows:
             text = "❤️ لا توجد محفوظات بعد."
         else:
             text = "❤️ <b>محفوظاتك:</b>\n\n"
+
             for i, row in enumerate(rows, 1):
                 text += (
                     f"<b>#{i}</b>\n"
@@ -1859,10 +2062,12 @@ Pending ID: <code>{new_pending_id}</code>
                     f"{esc(row[0][:500])}\n\n"
                     f"━━━━━━━━━━━━━━\n\n"
                 )
+
         await safe_edit(q, text, back())
 
     elif data == "adhkar_menu":
         lang = get_adhkar_lang(user_id)
+
         await safe_edit(
             q,
             f"🤲 <b>قسم الأذكار</b>\n\n"
@@ -1873,14 +2078,24 @@ Pending ID: <code>{new_pending_id}</code>
 
     elif data == "adhkar_stats":
         text = render_user_adhkar_stats(user_id, chat_id)
-        await safe_edit(q, text, adhkar_stats_back_menu())
+
+        await safe_edit(
+            q,
+            text,
+            adhkar_stats_back_menu()
+        )
 
     elif data == "adhkar_lang_menu":
-        await safe_edit(q, "🌍 <b>اختر لغة الأذكار:</b>", adhkar_lang_menu())
+        await safe_edit(
+            q,
+            "🌍 <b>اختر لغة الأذكار:</b>",
+            adhkar_lang_menu()
+        )
 
     elif data.startswith("adhkar_lang_"):
         lang = data.split("_")[-1]
         set_adhkar_lang(user_id, lang)
+
         await safe_edit(
             q,
             f"✅ تم تغيير لغة الأذكار إلى: <b>{esc(language_display(lang))}</b>",
@@ -1892,30 +2107,38 @@ Pending ID: <code>{new_pending_id}</code>
         kind = parts[2]
         index = int(parts[3])
         count = int(parts[4])
+
         lang = get_adhkar_lang(user_id)
         text, markup = render_adhkar_counter(kind, index, lang, count)
+
         await safe_edit(q, text, markup)
 
     elif data.startswith("adhkar_morning_"):
         index = int(data.split("_")[-1])
         lang = get_adhkar_lang(user_id)
+
         text, markup = render_adhkar("morning", index, lang)
+
         await safe_edit(q, text, markup)
 
     elif data.startswith("adhkar_evening_"):
         index = int(data.split("_")[-1])
         lang = get_adhkar_lang(user_id)
+
         text, markup = render_adhkar("evening", index, lang)
+
         await safe_edit(q, text, markup)
 
     elif data == "adhkar_done_morning":
         stats = record_adhkar_completion(user_id, chat_id, "morning")
         text = render_completion_message("morning", stats)
+
         await safe_edit(q, text, completion_menu())
 
     elif data == "adhkar_done_evening":
         stats = record_adhkar_completion(user_id, chat_id, "evening")
         text = render_completion_message("evening", stats)
+
         await safe_edit(q, text, completion_menu())
 
     elif data == "adhkar_reminders":
@@ -1944,16 +2167,30 @@ Pending ID: <code>{new_pending_id}</code>
     elif data == "adhkar_toggle_morning":
         status = get_adhkar_reminder_status(user_id, chat_id)
         new_value = 0 if status["morning"] else 1
+
         set_adhkar_reminder(user_id, chat_id, "morning", new_value)
+
         await q.answer("تم تحديث تذكير الصباح ✅", show_alert=True)
-        await safe_edit(q, "⏰ <b>تم تحديث إعدادات التذكير.</b>", adhkar_reminder_menu(user_id, chat_id))
+
+        await safe_edit(
+            q,
+            "⏰ <b>تم تحديث إعدادات التذكير.</b>",
+            adhkar_reminder_menu(user_id, chat_id)
+        )
 
     elif data == "adhkar_toggle_evening":
         status = get_adhkar_reminder_status(user_id, chat_id)
         new_value = 0 if status["evening"] else 1
+
         set_adhkar_reminder(user_id, chat_id, "evening", new_value)
+
         await q.answer("تم تحديث تذكير المساء ✅", show_alert=True)
-        await safe_edit(q, "⏰ <b>تم تحديث إعدادات التذكير.</b>", adhkar_reminder_menu(user_id, chat_id))
+
+        await safe_edit(
+            q,
+            "⏰ <b>تم تحديث إعدادات التذكير.</b>",
+            adhkar_reminder_menu(user_id, chat_id)
+        )
 
     elif data == "adhkar_time_morning":
         await safe_edit(
@@ -1973,6 +2210,7 @@ Pending ID: <code>{new_pending_id}</code>
         parts = data.split("_")
         kind = parts[2]
         selected_time = parts[3]
+
         ok = set_adhkar_reminder_time(user_id, chat_id, kind, selected_time)
 
         if ok:
@@ -2072,6 +2310,10 @@ Pending ID: <code>{new_pending_id}</code>
 🚫 لا نقدّم آراء شخصية.
 ✅ ننشر نصوصًا موثقة ومترجمة.
 
+🕊️ حديث اليوم.
+📖 آية اليوم.
+🤲 دعاء اليوم.
+
 🤲 يحتوي البوت على أذكار الصباح والمساء بلغات متعددة مع عداد تكرار.
 🔥 ويحتوي على إنجاز يومي وسلسلة أيام للأذكار.
 ⏰ ويمكن لكل مستخدم اختيار وقت التذكير والمنطقة الزمنية الخاصة به.
@@ -2090,31 +2332,63 @@ Pending ID: <code>{new_pending_id}</code>
         if not is_admin(user_id):
             await q.answer("غير مسموح", show_alert=True)
             return
-        await safe_edit(q, "🛠️ <b>لوحة الإدارة</b>\n\nاختر إجراء:", admin_menu())
+
+        await safe_edit(
+            q,
+            "🛠️ <b>لوحة الإدارة</b>\n\nاختر إجراء:",
+            admin_menu()
+        )
 
     elif data == "admin_post_hadith":
         if not is_admin(user_id):
             await q.answer("غير مسموح", show_alert=True)
             return
+
         text, hid = hadith_channel_message()
-        await send_channel_message(context, text, "hadith", hid, "admin_manual_hadith")
+
+        await send_channel_message(
+            context=context,
+            text=text,
+            post_type="hadith",
+            item_id=hid,
+            source="admin_manual_hadith"
+        )
+
         await safe_edit(q, "✅ <b>تم نشر حديث في القناة.</b>", admin_menu())
 
     elif data == "admin_post_quran":
         if not is_admin(user_id):
             await q.answer("غير مسموح", show_alert=True)
             return
+
         text, ayah_ref = quran_channel_message()
-        await send_channel_message(context, text, "quran", ayah_ref, "admin_manual_quran")
+
+        await send_channel_message(
+            context=context,
+            text=text,
+            post_type="quran",
+            item_id=ayah_ref,
+            source="admin_manual_quran"
+        )
+
         await safe_edit(q, "✅ <b>تم نشر آية في القناة.</b>", admin_menu())
 
-    elif data == "admin_post_mixed":
+    elif data == "admin_post_dua":
         if not is_admin(user_id):
             await q.answer("غير مسموح", show_alert=True)
             return
-        text, item_id = mixed_channel_message()
-        await send_channel_message(context, text, "mixed", item_id, "admin_manual_mixed")
-        await safe_edit(q, "✅ <b>تم نشر آية + حديث في القناة.</b>", admin_menu())
+
+        text, dua_id = dua_channel_message()
+
+        await send_channel_message(
+            context=context,
+            text=text,
+            post_type="dua",
+            item_id=dua_id,
+            source="admin_manual_dua"
+        )
+
+        await safe_edit(q, "✅ <b>تم نشر دعاء في القناة.</b>", admin_menu())
 
     elif data == "admin_stats":
         if not is_admin(user_id):
@@ -2135,7 +2409,7 @@ Pending ID: <code>{new_pending_id}</code>
 📢 <b>إجمالي منشورات القناة:</b> {channel_posts_count()}
 🕊️ <b>منشورات الحديث:</b> {channel_posts_count_by_type("hadith")}
 📖 <b>منشورات القرآن:</b> {channel_posts_count_by_type("quran")}
-📩 <b>منشورات آية + حديث:</b> {channel_posts_count_by_type("mixed")}
+🤲 <b>منشورات الدعاء:</b> {channel_posts_count_by_type("dua")}
 
 📋 <b>منشورات بانتظار الموافقة:</b> {pending_channel_posts_count()}
 
@@ -2148,6 +2422,11 @@ Pending ID: <code>{new_pending_id}</code>
 🌍 <b>المنطقة الزمنية لكل مستخدم:</b> مفعّلة
 ✅ <b>مراجعة قبل النشر التلقائي:</b> مفعّلة
 🟢 <b>زر WhatsApp:</b> {"مفعّل" if WHATSAPP_CHANNEL_URL else "غير مفعّل"}
+
+⏰ <b>أوقات النشر التلقائي:</b>
+• حديث اليوم: <code>{esc(HADITH_POST_TIME)}</code>
+• دعاء اليوم: <code>{esc(DUA_POST_TIME)}</code>
+• آية اليوم: <code>{esc(QURAN_POST_TIME)}</code>
 
 ⏰ <b>الأوقات الافتراضية للمستخدم الجديد:</b>
 • صباح: <code>{esc(DEFAULT_MORNING_ADHKAR_TIME)}</code>
@@ -2163,8 +2442,14 @@ Pending ID: <code>{new_pending_id}</code>
         if not is_admin(user_id):
             await q.answer("غير مسموح", show_alert=True)
             return
+
         context.user_data["waiting_custom_post"] = True
-        await safe_edit(q, "✍️ <b>أرسل الآن الرسالة التي تريد نشرها في القناة.</b>", admin_back())
+
+        await safe_edit(
+            q,
+            "✍️ <b>أرسل الآن الرسالة التي تريد نشرها في القناة.</b>",
+            admin_back()
+        )
 
 
 # =====================================================
@@ -2287,13 +2572,13 @@ def main():
     )
 
     app.job_queue.run_daily(
-        auto_publish_quran,
-        time=parse_schedule_time(QURAN_POST_TIME, "15:00")
+        auto_publish_dua,
+        time=parse_schedule_time(DUA_POST_TIME, "12:00")
     )
 
     app.job_queue.run_daily(
-        auto_publish_mixed,
-        time=parse_schedule_time(MIXED_POST_TIME, "21:00")
+        auto_publish_quran,
+        time=parse_schedule_time(QURAN_POST_TIME, "15:00")
     )
 
     app.job_queue.run_repeating(
@@ -2302,10 +2587,10 @@ def main():
         first=10
     )
 
-    print("Bot running with approval before auto channel publishing...")
+    print("Bot running with Hadith + Quran + Dua only.")
     print(f"Hadith post time: {HADITH_POST_TIME}")
+    print(f"Dua post time: {DUA_POST_TIME}")
     print(f"Quran post time: {QURAN_POST_TIME}")
-    print(f"Mixed post time: {MIXED_POST_TIME}")
     print(f"Default morning adhkar time: {DEFAULT_MORNING_ADHKAR_TIME}")
     print(f"Default evening adhkar time: {DEFAULT_EVENING_ADHKAR_TIME}")
     print(f"Default user timezone: {safe_timezone(DEFAULT_USER_TIMEZONE)}")
@@ -2313,6 +2598,7 @@ def main():
     print("Personal reminders checker: every 60 seconds")
     print("Adhkar completion + streak system: enabled")
     print("Auto channel publishing approval: enabled")
+    print("Mixed post removed: enabled")
 
     app.run_polling()
 
