@@ -178,6 +178,7 @@ def init_db():
         user_id INTEGER PRIMARY KEY,
         lang TEXT DEFAULT 'ar',
         adhkar_lang TEXT DEFAULT 'ar',
+        quran_lang TEXT DEFAULT 'ar',
         created_at INTEGER DEFAULT 0
     )
     """)
@@ -255,6 +256,8 @@ def init_db():
     user_cols = [row[1] for row in c.fetchall()]
     if "adhkar_lang" not in user_cols:
         c.execute("ALTER TABLE users ADD COLUMN adhkar_lang TEXT DEFAULT 'ar'")
+    if "quran_lang" not in user_cols:
+        c.execute("ALTER TABLE users ADD COLUMN quran_lang TEXT DEFAULT 'ar'")
     if "created_at" not in user_cols:
         c.execute("ALTER TABLE users ADD COLUMN created_at INTEGER DEFAULT 0")
 
@@ -1118,6 +1121,238 @@ def quran_channel_message():
 
 
 # =====================================================
+# Quran Mushaf Reader
+# =====================================================
+
+QURAN_TRANSLATIONS = {
+    "ar": {"name": "🇸🇦 العربية فقط", "edition": "quran-uthmani"},
+    "en": {"name": "🇬🇧 English", "edition": "en.sahih"},
+    "de": {"name": "🇩🇪 Deutsch", "edition": "de.aburida"},
+    "fr": {"name": "🇫🇷 Français", "edition": "fr.hamidullah"},
+    "es": {"name": "🇪🇸 Español", "edition": "es.cortes"},
+    "tr": {"name": "🇹🇷 Türkçe", "edition": "tr.diyanet"},
+    "id": {"name": "🇮🇩 Indonesia", "edition": "id.indonesian"},
+    "ur": {"name": "🇺🇷 Urdu", "edition": "ur.jalandhry"},
+}
+
+SURAH_NAMES = [
+    "الفاتحة", "البقرة", "آل عمران", "النساء", "المائدة", "الأنعام", "الأعراف", "الأنفال", "التوبة", "يونس",
+    "هود", "يوسف", "الرعد", "إبراهيم", "الحجر", "النحل", "الإسراء", "الكهف", "مريم", "طه",
+    "الأنبياء", "الحج", "المؤمنون", "النور", "الفرقان", "الشعراء", "النمل", "القصص", "العنكبوت", "الروم",
+    "لقمان", "السجدة", "الأحزاب", "سبأ", "فاطر", "يس", "الصافات", "ص", "الزمر", "غافر",
+    "فصلت", "الشورى", "الزخرف", "الدخان", "الجاثية", "الأحقاف", "محمد", "الفتح", "الحجرات", "ق",
+    "الذاريات", "الطور", "النجم", "القمر", "الرحمن", "الواقعة", "الحديد", "المجادلة", "الحشر", "الممتحنة",
+    "الصف", "الجمعة", "المنافقون", "التغابن", "الطلاق", "التحريم", "الملك", "القلم", "الحاقة", "المعارج",
+    "نوح", "الجن", "المزمل", "المدثر", "القيامة", "الإنسان", "المرسلات", "النبأ", "النازعات", "عبس",
+    "التكوير", "الانفطار", "المطففين", "الانشقاق", "البروج", "الطارق", "الأعلى", "الغاشية", "الفجر", "البلد",
+    "الشمس", "الليل", "الضحى", "الشرح", "التين", "العلق", "القدر", "البينة", "الزلزلة", "العاديات",
+    "القارعة", "التكاثر", "العصر", "الهمزة", "الفيل", "قريش", "الماعون", "الكوثر", "الكافرون", "النصر",
+    "المسد", "الإخلاص", "الفلق", "الناس"
+]
+
+SURAH_PAGE_SIZE = 10
+SURAH_LIST_PAGE_SIZE = 15
+
+
+def get_quran_lang(user_id):
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    try:
+        c.execute("SELECT quran_lang FROM users WHERE user_id=?", (user_id,))
+        row = c.fetchone()
+    except sqlite3.OperationalError:
+        row = None
+    conn.close()
+
+    if not row or not row[0] or row[0] not in QURAN_TRANSLATIONS:
+        return "ar"
+
+    return row[0]
+
+
+def set_quran_lang(user_id, lang):
+    if lang not in QURAN_TRANSLATIONS:
+        lang = "ar"
+
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("UPDATE users SET quran_lang=? WHERE user_id=?", (lang, user_id))
+    conn.commit()
+    conn.close()
+
+
+def quran_main_menu(user_id):
+    lang = get_quran_lang(user_id)
+    lang_name = QURAN_TRANSLATIONS.get(lang, QURAN_TRANSLATIONS["ar"])["name"]
+
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("📖 المصحف", callback_data="quran_mushaf_0")],
+        [InlineKeyboardButton("🎲 آية عشوائية", callback_data="quran_random_ayah")],
+        [InlineKeyboardButton("📌 آية اليوم", callback_data="quran_daily")],
+        [InlineKeyboardButton(f"🌍 الترجمة: {lang_name}", callback_data="quran_lang_menu")],
+        [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")],
+    ])
+
+
+def quran_language_menu():
+    rows = []
+    row = []
+    for lang, data in QURAN_TRANSLATIONS.items():
+        row.append(InlineKeyboardButton(data["name"], callback_data=f"quran_set_lang_{lang}"))
+        if len(row) == 2:
+            rows.append(row)
+            row = []
+    if row:
+        rows.append(row)
+    rows.append([InlineKeyboardButton("⬅️ رجوع للقرآن", callback_data="quran")])
+    rows.append([InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")])
+    return InlineKeyboardMarkup(rows)
+
+
+def quran_mushaf_reply_menu(page=0, user_id=0):
+    max_page = (len(SURAH_NAMES) - 1) // SURAH_LIST_PAGE_SIZE
+    page = max(0, min(int(page), max_page))
+    start = page * SURAH_LIST_PAGE_SIZE
+    end = min(start + SURAH_LIST_PAGE_SIZE, len(SURAH_NAMES))
+
+    rows = [[KeyboardButton("القائمة الرئيسية")]]
+    current_row = []
+
+    for i in range(start, end):
+        current_row.append(KeyboardButton(f"{{ {SURAH_NAMES[i]} }}"))
+        if len(current_row) == 3:
+            rows.append(current_row)
+            current_row = []
+    if current_row:
+        rows.append(current_row)
+
+    nav = []
+    if page > 0:
+        nav.append(KeyboardButton("⬅️ السابق"))
+    if page < max_page:
+        nav.append(KeyboardButton("التالي ➡️"))
+    if nav:
+        rows.append(nav)
+
+    rows.append([KeyboardButton("🎲 آية عشوائية"), KeyboardButton("🌍 ترجمة القرآن")])
+    rows.append([KeyboardButton("🏠 القائمة الرئيسية")])
+
+    return ReplyKeyboardMarkup(
+        rows,
+        resize_keyboard=True,
+        one_time_keyboard=False,
+        input_field_placeholder="اختر السورة"
+    )
+
+
+def find_surah_number_from_button(text):
+    value = str(text or "").strip()
+    if value.startswith("{") and value.endswith("}"):
+        value = value[1:-1].strip()
+
+    if value in SURAH_NAMES:
+        return SURAH_NAMES.index(value) + 1
+
+    return None
+
+
+def fetch_surah_ayahs(surah_number, edition):
+    response = requests.get(
+        f"{QURAN_API}/surah/{surah_number}/{edition}",
+        timeout=20
+    )
+    response.raise_for_status()
+    return response.json()["data"]
+
+
+def render_surah_page(surah_number, page, lang="ar"):
+    surah_number = int(surah_number)
+    page = max(0, int(page))
+    lang = lang if lang in QURAN_TRANSLATIONS else "ar"
+
+    ar_data = fetch_surah_ayahs(surah_number, "quran-uthmani")
+    ar_ayahs = ar_data["ayahs"]
+    total_ayahs = len(ar_ayahs)
+    max_page = max(0, (total_ayahs - 1) // SURAH_PAGE_SIZE)
+    page = min(page, max_page)
+
+    start = page * SURAH_PAGE_SIZE
+    end = min(start + SURAH_PAGE_SIZE, total_ayahs)
+
+    translation_ayahs = None
+    if lang != "ar":
+        edition = QURAN_TRANSLATIONS[lang]["edition"]
+        tr_data = fetch_surah_ayahs(surah_number, edition)
+        translation_ayahs = tr_data["ayahs"]
+
+    lang_name = QURAN_TRANSLATIONS[lang]["name"]
+    surah_name = ar_data.get("name", SURAH_NAMES[surah_number - 1])
+    surah_english = ar_data.get("englishName", "")
+
+    text = f"""📖 <b>{esc(surah_name)}</b>
+<b>سورة {esc(SURAH_NAMES[surah_number - 1])}</b> | {esc(surah_english)}
+
+الآيات <code>{start + 1}</code> - <code>{end}</code> من <code>{total_ayahs}</code>
+🌍 الترجمة: <b>{esc(lang_name)}</b>
+{line()}"""
+
+    for i in range(start, end):
+        ayah_no = ar_ayahs[i]["numberInSurah"]
+        text += f"<b>﴿{ayah_no}﴾</b> {esc(ar_ayahs[i]['text'])}\n"
+        if translation_ayahs:
+            text += f"<i>{esc(translation_ayahs[i]['text'])}</i>\n"
+        text += "\n"
+
+    buttons = []
+    nav = []
+    if page > 0:
+        nav.append(InlineKeyboardButton("⬅️ السابق", callback_data=f"quran_surah_{surah_number}_{page - 1}"))
+    if page < max_page:
+        nav.append(InlineKeyboardButton("التالي ➡️", callback_data=f"quran_surah_{surah_number}_{page + 1}"))
+    if nav:
+        buttons.append(nav)
+
+    buttons.append([InlineKeyboardButton("🌍 تغيير الترجمة", callback_data="quran_lang_menu")])
+    buttons.append([InlineKeyboardButton("📖 اختيار سورة", callback_data="quran_mushaf_0")])
+    buttons.append([InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")])
+
+    return text, InlineKeyboardMarkup(buttons), page
+
+
+def random_ayah_message_for_user(user_id):
+    lang = get_quran_lang(user_id)
+    number = random.randint(1, 6236)
+
+    ar = get_ayah_by_number(number, "quran-uthmani")
+
+    text = f"""🎲 <b>آية عشوائية</b>
+{line()}
+🇸🇦 <b>العربية</b>
+
+{esc(ar["text"])}
+"""
+
+    if lang != "ar":
+        edition = QURAN_TRANSLATIONS[lang]["edition"]
+        tr = get_ayah_by_number(number, edition)
+        text += f"""
+{line()}
+{esc(QURAN_TRANSLATIONS[lang]["name"])}
+
+{esc(tr["text"])}
+"""
+
+    ayah_ref = f"{ar['surah_number']}:{ar['ayah_number']}"
+    text += f"""
+{line()}
+📖 <b>السورة:</b> {esc(ar["surah_name"])} | {esc(ar["surah_english"])}
+🔢 <b>الآية:</b> <code>{esc(ayah_ref)}</code>
+"""
+
+    return text
+
+
+# =====================================================
 # Dua of the Day
 # =====================================================
 
@@ -1907,7 +2142,7 @@ async def show_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE, quiz_id:
         await context.bot.send_message(
             chat_id=chat_id,
             text="❌ لم يتم العثور على السؤال.",
-            reply_markup=main_menu(user_id),
+            reply_markup=reply_main_menu(user_id),
             parse_mode="HTML"
         )
         return
@@ -2265,27 +2500,55 @@ Pending ID: <code>{new_pending_id}</code>
         )
 
     elif data == "quran":
+        lang = get_quran_lang(user_id)
+        await safe_edit(
+            q,
+            f"📖 <b>قسم القرآن الكريم</b>\n\nاختر من القائمة:\n\n🌍 الترجمة الحالية: <b>{esc(QURAN_TRANSLATIONS[lang]['name'])}</b>",
+            quran_main_menu(user_id)
+        )
+
+    elif data.startswith("quran_mushaf_"):
+        page = int(data.replace("quran_mushaf_", "", 1))
+        context.user_data["surah_list_page"] = page
+        await q.message.reply_text(
+            "📖 <b>المصحف</b>\n\nفضلاً اختر السورة المراد قراءتها...",
+            reply_markup=quran_mushaf_reply_menu(page, user_id),
+            parse_mode="HTML"
+        )
+
+    elif data.startswith("quran_surah_"):
         try:
-            res = requests.get(
-                f"{QURAN_API}/surah/1/quran-uthmani",
-                timeout=15
-            )
-            res.raise_for_status()
-
-            ayat = res.json()["data"]["ayahs"]
-            text = "📖 <b>سورة الفاتحة</b>" + line()
-
-            for a in ayat:
-                text += f"{esc(a['text'])}\n"
-
-            await safe_edit(q, text, back())
-
+            parts = data.split("_")
+            surah_number = int(parts[2])
+            page = int(parts[3])
+            lang = get_quran_lang(user_id)
+            text, markup, _ = render_surah_page(surah_number, page, lang)
+            await safe_edit(q, text, markup)
         except Exception as e:
-            await safe_edit(
-                q,
-                f"❌ خطأ في جلب القرآن:\n<code>{esc(e)}</code>",
-                back()
-            )
+            await safe_edit(q, f"❌ خطأ في جلب السورة:\n<code>{esc(e)}</code>", quran_main_menu(user_id))
+
+    elif data == "quran_random_ayah":
+        try:
+            text = random_ayah_message_for_user(user_id)
+            await safe_edit(q, text, quran_main_menu(user_id))
+        except Exception as e:
+            await safe_edit(q, f"❌ خطأ في جلب الآية:\n<code>{esc(e)}</code>", quran_main_menu(user_id))
+
+    elif data == "quran_daily":
+        text, ayah_ref = quran_channel_message()
+        await safe_edit(q, text, quran_main_menu(user_id))
+
+    elif data == "quran_lang_menu":
+        await safe_edit(q, "🌍 <b>اختر ترجمة القرآن:</b>", quran_language_menu())
+
+    elif data.startswith("quran_set_lang_"):
+        lang = data.replace("quran_set_lang_", "", 1)
+        set_quran_lang(user_id, lang)
+        await safe_edit(
+            q,
+            f"✅ تم تغيير ترجمة القرآن إلى: <b>{esc(QURAN_TRANSLATIONS[lang]['name'])}</b>",
+            quran_main_menu(user_id)
+        )
 
     elif data == "hadith":
         await safe_edit(
@@ -2748,36 +3011,21 @@ Pending ID: <code>{new_pending_id}</code>
         )
 
 
+
 # =====================================================
 # Reply Keyboard Menu Handler
 # =====================================================
 
-async def send_fatiha_from_menu(update: Update):
-    try:
-        res = requests.get(
-            f"{QURAN_API}/surah/1/quran-uthmani",
-            timeout=15
-        )
-        res.raise_for_status()
+async def send_quran_section_from_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    context.user_data["surah_list_page"] = 0
+    lang = get_quran_lang(user_id)
 
-        ayat = res.json()["data"]["ayahs"]
-        text = "📖 <b>سورة الفاتحة</b>" + line()
-
-        for a in ayat:
-            text += f"{esc(a['text'])}\n"
-
-        await update.message.reply_text(
-            text,
-            reply_markup=back(),
-            parse_mode="HTML"
-        )
-
-    except Exception as e:
-        await update.message.reply_text(
-            f"❌ خطأ في جلب القرآن:\n<code>{esc(e)}</code>",
-            reply_markup=back(),
-            parse_mode="HTML"
-        )
+    await update.message.reply_text(
+        f"📖 <b>المصحف</b>\n\nفضلاً اختر السورة المراد قراءتها...\n\n🌍 الترجمة الحالية: <b>{esc(QURAN_TRANSLATIONS[lang]['name'])}</b>",
+        reply_markup=quran_mushaf_reply_menu(0, user_id),
+        parse_mode="HTML"
+    )
 
 
 async def send_about_from_menu(update: Update):
@@ -2817,9 +3065,11 @@ async def send_about_from_menu(update: Update):
 
 async def handle_reply_keyboard_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
+    chat_id = update.message.chat_id
     text = (update.message.text or "").strip()
 
     if text in ["🏠 القائمة الرئيسية", "القائمة الرئيسية", "/menu"]:
+        context.user_data.pop("surah_list_page", None)
         await update.message.reply_text(
             "🌉 <b>Ummah Bridge</b>\n\nاختر من القائمة أسفل الشاشة:",
             reply_markup=reply_main_menu(user_id),
@@ -2828,7 +3078,65 @@ async def handle_reply_keyboard_menu(update: Update, context: ContextTypes.DEFAU
         return True
 
     if text == "📖 القرآن":
-        await send_fatiha_from_menu(update)
+        await send_quran_section_from_menu(update, context)
+        return True
+
+    if text in ["التالي ➡️", "⬅️ السابق"]:
+        page = int(context.user_data.get("surah_list_page", 0))
+        if text == "التالي ➡️":
+            page += 1
+        else:
+            page -= 1
+        max_page = (len(SURAH_NAMES) - 1) // SURAH_LIST_PAGE_SIZE
+        page = max(0, min(page, max_page))
+        context.user_data["surah_list_page"] = page
+        await update.message.reply_text(
+            f"📖 <b>المصحف</b>\n\nفضلاً اختر السورة المراد قراءتها...\n\nصفحة السور: <code>{page + 1}</code> / <code>{max_page + 1}</code>",
+            reply_markup=quran_mushaf_reply_menu(page, user_id),
+            parse_mode="HTML"
+        )
+        return True
+
+    surah_number = find_surah_number_from_button(text)
+    if surah_number:
+        try:
+            lang = get_quran_lang(user_id)
+            surah_text, markup, _ = render_surah_page(surah_number, 0, lang)
+            await update.message.reply_text(
+                surah_text,
+                reply_markup=markup,
+                parse_mode="HTML",
+                disable_web_page_preview=True
+            )
+        except Exception as e:
+            await update.message.reply_text(
+                f"❌ خطأ في جلب السورة:\n<code>{esc(e)}</code>",
+                parse_mode="HTML"
+            )
+        return True
+
+    if text == "🎲 آية عشوائية":
+        try:
+            ayah_text = random_ayah_message_for_user(user_id)
+            await update.message.reply_text(
+                ayah_text,
+                reply_markup=quran_main_menu(user_id),
+                parse_mode="HTML",
+                disable_web_page_preview=True
+            )
+        except Exception as e:
+            await update.message.reply_text(
+                f"❌ خطأ في جلب الآية:\n<code>{esc(e)}</code>",
+                parse_mode="HTML"
+            )
+        return True
+
+    if text in ["🌍 ترجمة القرآن", "🌍 تغيير اللغة"]:
+        await update.message.reply_text(
+            "🌍 <b>اختر الترجمة:</b>",
+            reply_markup=quran_language_menu(),
+            parse_mode="HTML"
+        )
         return True
 
     if text == "🕊️ الأحاديث":
@@ -2856,14 +3164,6 @@ async def handle_reply_keyboard_menu(update: Update, context: ContextTypes.DEFAU
         await update.message.reply_text(
             quiz_text,
             reply_markup=quiz_markup,
-            parse_mode="HTML"
-        )
-        return True
-
-    if text == "🌍 تغيير اللغة":
-        await update.message.reply_text(
-            "🌍 <b>اختر لغة الأذكار:</b>",
-            reply_markup=adhkar_lang_menu(),
             parse_mode="HTML"
         )
         return True
