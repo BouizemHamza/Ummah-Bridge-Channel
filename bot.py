@@ -18,7 +18,7 @@ import datetime
 import time
 from zoneinfo import ZoneInfo
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -1389,6 +1389,26 @@ def language_display(lang):
     return f"{item['flag']} {item['name']}"
 
 
+def reply_main_menu(user_id):
+    rows = [
+        [KeyboardButton("📖 القرآن"), KeyboardButton("🕊️ الأحاديث")],
+        [KeyboardButton("🤲 الأذكار"), KeyboardButton("🧠 سؤال إسلامي")],
+        [KeyboardButton("🌍 تغيير اللغة"), KeyboardButton("ℹ️ عن المشروع")],
+        [KeyboardButton("🌐 Telegram"), KeyboardButton("🟢 WhatsApp")],
+        [KeyboardButton("🏠 القائمة الرئيسية")],
+    ]
+
+    if is_admin(user_id):
+        rows.append([KeyboardButton("🛠️ لوحة الإدارة")])
+
+    return ReplyKeyboardMarkup(
+        rows,
+        resize_keyboard=True,
+        one_time_keyboard=False,
+        input_field_placeholder="اختر من القائمة"
+    )
+
+
 def main_menu(user_id):
     buttons = [
         [InlineKeyboardButton("📖 القرآن", callback_data="quran")],
@@ -1917,8 +1937,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
     await update.message.reply_text(
-        "🌉 <b>مرحبًا بك في Ummah Bridge</b>\n\nاختر من القائمة:",
-        reply_markup=main_menu(user_id),
+        "🌉 <b>مرحبًا بك في Ummah Bridge</b>\n\nاختر من القائمة أسفل الشاشة:",
+        reply_markup=reply_main_menu(user_id),
         parse_mode="HTML"
     )
 
@@ -2729,6 +2749,169 @@ Pending ID: <code>{new_pending_id}</code>
 
 
 # =====================================================
+# Reply Keyboard Menu Handler
+# =====================================================
+
+async def send_fatiha_from_menu(update: Update):
+    try:
+        res = requests.get(
+            f"{QURAN_API}/surah/1/quran-uthmani",
+            timeout=15
+        )
+        res.raise_for_status()
+
+        ayat = res.json()["data"]["ayahs"]
+        text = "📖 <b>سورة الفاتحة</b>" + line()
+
+        for a in ayat:
+            text += f"{esc(a['text'])}\n"
+
+        await update.message.reply_text(
+            text,
+            reply_markup=back(),
+            parse_mode="HTML"
+        )
+
+    except Exception as e:
+        await update.message.reply_text(
+            f"❌ خطأ في جلب القرآن:\n<code>{esc(e)}</code>",
+            reply_markup=back(),
+            parse_mode="HTML"
+        )
+
+
+async def send_about_from_menu(update: Update):
+    await update.message.reply_text(
+        f"""ℹ️ <b>Ummah Bridge</b>
+
+مشروع دعوي للتعريف بالإسلام عبر الإنترنت.
+
+📖 المصدر:
+القرآن الكريم والسنة النبوية.
+
+🚫 لا نقدّم فتاوى.
+🚫 لا نقدّم آراء شخصية.
+✅ ننشر نصوصًا موثقة ومترجمة.
+
+🕊️ حديث اليوم.
+📖 آية اليوم.
+🤲 دعاء اليوم.
+🧠 سؤال إسلامي تفاعلي.
+
+🤲 يحتوي البوت على أذكار الصباح والمساء بلغات متعددة مع عداد تكرار.
+🔥 ويحتوي على إنجاز يومي وسلسلة أيام للأذكار.
+⏰ ويمكن لكل مستخدم اختيار وقت التذكير والمنطقة الزمنية الخاصة به.
+✅ النشر التلقائي للقناة يتم بعد موافقة الأدمن.
+
+🌍 Telegram:
+{esc(CHANNEL_ID)}
+
+🟢 WhatsApp:
+{esc(WHATSAPP_CHANNEL_URL) if WHATSAPP_CHANNEL_URL else "غير مضاف بعد"}
+""",
+        reply_markup=about_menu(),
+        parse_mode="HTML",
+        disable_web_page_preview=True
+    )
+
+
+async def handle_reply_keyboard_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    text = (update.message.text or "").strip()
+
+    if text in ["🏠 القائمة الرئيسية", "القائمة الرئيسية", "/menu"]:
+        await update.message.reply_text(
+            "🌉 <b>Ummah Bridge</b>\n\nاختر من القائمة أسفل الشاشة:",
+            reply_markup=reply_main_menu(user_id),
+            parse_mode="HTML"
+        )
+        return True
+
+    if text == "📖 القرآن":
+        await send_fatiha_from_menu(update)
+        return True
+
+    if text == "🕊️ الأحاديث":
+        await update.message.reply_text(
+            "🕊️ <b>قسم الأحاديث</b>",
+            reply_markup=hadith_menu(),
+            parse_mode="HTML"
+        )
+        return True
+
+    if text == "🤲 الأذكار":
+        lang = get_adhkar_lang(user_id)
+        await update.message.reply_text(
+            f"🤲 <b>قسم الأذكار</b>\n\n"
+            f"🌍 اللغة الحالية: <b>{esc(language_display(lang))}</b>\n\n"
+            f"اختر ما تريد قراءته:",
+            reply_markup=adhkar_main_menu(user_id),
+            parse_mode="HTML"
+        )
+        return True
+
+    if text == "🧠 سؤال إسلامي":
+        quiz = random_quiz()
+        quiz_text, quiz_markup = render_quiz_question(quiz)
+        await update.message.reply_text(
+            quiz_text,
+            reply_markup=quiz_markup,
+            parse_mode="HTML"
+        )
+        return True
+
+    if text == "🌍 تغيير اللغة":
+        await update.message.reply_text(
+            "🌍 <b>اختر لغة الأذكار:</b>",
+            reply_markup=adhkar_lang_menu(),
+            parse_mode="HTML"
+        )
+        return True
+
+    if text == "ℹ️ عن المشروع":
+        await send_about_from_menu(update)
+        return True
+
+    if text == "🌐 Telegram":
+        await update.message.reply_text(
+            "🌐 قناة Telegram الرسمية:",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🌐 فتح قناة Telegram", url="https://t.me/UMMAHBRIDGE")]
+            ]),
+            parse_mode="HTML"
+        )
+        return True
+
+    if text == "🟢 WhatsApp":
+        if WHATSAPP_CHANNEL_URL:
+            await update.message.reply_text(
+                "🟢 قناة WhatsApp الرسمية:",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("🟢 فتح قناة WhatsApp", url=WHATSAPP_CHANNEL_URL)]
+                ]),
+                parse_mode="HTML",
+                disable_web_page_preview=True
+            )
+        else:
+            await update.message.reply_text("❌ رابط قناة WhatsApp غير مضاف بعد.")
+        return True
+
+    if text == "🛠️ لوحة الإدارة":
+        if not is_admin(user_id):
+            await update.message.reply_text("❌ هذا القسم خاص بالمشرف فقط.")
+            return True
+
+        await update.message.reply_text(
+            "🛠️ <b>لوحة الإدارة</b>\n\nاختر إجراء:",
+            reply_markup=admin_menu(),
+            parse_mode="HTML"
+        )
+        return True
+
+    return False
+
+
+# =====================================================
 # Text Handler
 # =====================================================
 
@@ -2821,6 +3004,17 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "✅ تم نشر الرسالة المخصصة في القناة.",
             reply_markup=admin_menu()
         )
+        return
+
+    handled = await handle_reply_keyboard_menu(update, context)
+    if handled:
+        return
+
+    await update.message.reply_text(
+        "استخدم القائمة أسفل الشاشة أو اضغط /start.",
+        reply_markup=reply_main_menu(user_id),
+        parse_mode="HTML"
+    )
 
 
 # =====================================================
@@ -2837,6 +3031,7 @@ def main():
     app = ApplicationBuilder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("menu", start))
     app.add_handler(CommandHandler("admin", admin_command))
     app.add_handler(CommandHandler("test_channel", test_channel))
     app.add_handler(CallbackQueryHandler(handler))
