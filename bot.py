@@ -18,7 +18,7 @@ import datetime
 import time
 from zoneinfo import ZoneInfo
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -177,8 +177,8 @@ def init_db():
     CREATE TABLE IF NOT EXISTS users(
         user_id INTEGER PRIMARY KEY,
         lang TEXT DEFAULT 'ar',
+        bot_lang TEXT DEFAULT 'ar',
         adhkar_lang TEXT DEFAULT 'ar',
-        quran_lang TEXT DEFAULT 'ar',
         created_at INTEGER DEFAULT 0
     )
     """)
@@ -254,10 +254,10 @@ def init_db():
 
     c.execute("PRAGMA table_info(users)")
     user_cols = [row[1] for row in c.fetchall()]
+    if "bot_lang" not in user_cols:
+        c.execute("ALTER TABLE users ADD COLUMN bot_lang TEXT DEFAULT 'ar'")
     if "adhkar_lang" not in user_cols:
         c.execute("ALTER TABLE users ADD COLUMN adhkar_lang TEXT DEFAULT 'ar'")
-    if "quran_lang" not in user_cols:
-        c.execute("ALTER TABLE users ADD COLUMN quran_lang TEXT DEFAULT 'ar'")
     if "created_at" not in user_cols:
         c.execute("ALTER TABLE users ADD COLUMN created_at INTEGER DEFAULT 0")
 
@@ -345,6 +345,36 @@ def set_adhkar_lang(user_id, lang):
     c.execute("UPDATE users SET adhkar_lang=? WHERE user_id=?", (lang, user_id))
     conn.commit()
     conn.close()
+
+
+def get_bot_lang(user_id):
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("SELECT bot_lang FROM users WHERE user_id=?", (user_id,))
+    row = c.fetchone()
+    conn.close()
+
+    if not row or not row[0]:
+        return "ar"
+
+    if row[0] not in BOT_TEXTS:
+        return "ar"
+
+    return row[0]
+
+
+def set_bot_lang(user_id, lang):
+    if lang not in BOT_TEXTS:
+        lang = "ar"
+
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("UPDATE users SET bot_lang=? WHERE user_id=?", (lang, user_id))
+    conn.commit()
+    conn.close()
+
+    if lang in ADHKAR_LANGUAGES:
+        set_adhkar_lang(user_id, lang)
 
 
 def save_hadith(user_id, text):
@@ -1121,238 +1151,6 @@ def quran_channel_message():
 
 
 # =====================================================
-# Quran Mushaf Reader
-# =====================================================
-
-QURAN_TRANSLATIONS = {
-    "ar": {"name": "🇸🇦 العربية فقط", "edition": "quran-uthmani"},
-    "en": {"name": "🇬🇧 English", "edition": "en.sahih"},
-    "de": {"name": "🇩🇪 Deutsch", "edition": "de.aburida"},
-    "fr": {"name": "🇫🇷 Français", "edition": "fr.hamidullah"},
-    "es": {"name": "🇪🇸 Español", "edition": "es.cortes"},
-    "tr": {"name": "🇹🇷 Türkçe", "edition": "tr.diyanet"},
-    "id": {"name": "🇮🇩 Indonesia", "edition": "id.indonesian"},
-    "ur": {"name": "🇺🇷 Urdu", "edition": "ur.jalandhry"},
-}
-
-SURAH_NAMES = [
-    "الفاتحة", "البقرة", "آل عمران", "النساء", "المائدة", "الأنعام", "الأعراف", "الأنفال", "التوبة", "يونس",
-    "هود", "يوسف", "الرعد", "إبراهيم", "الحجر", "النحل", "الإسراء", "الكهف", "مريم", "طه",
-    "الأنبياء", "الحج", "المؤمنون", "النور", "الفرقان", "الشعراء", "النمل", "القصص", "العنكبوت", "الروم",
-    "لقمان", "السجدة", "الأحزاب", "سبأ", "فاطر", "يس", "الصافات", "ص", "الزمر", "غافر",
-    "فصلت", "الشورى", "الزخرف", "الدخان", "الجاثية", "الأحقاف", "محمد", "الفتح", "الحجرات", "ق",
-    "الذاريات", "الطور", "النجم", "القمر", "الرحمن", "الواقعة", "الحديد", "المجادلة", "الحشر", "الممتحنة",
-    "الصف", "الجمعة", "المنافقون", "التغابن", "الطلاق", "التحريم", "الملك", "القلم", "الحاقة", "المعارج",
-    "نوح", "الجن", "المزمل", "المدثر", "القيامة", "الإنسان", "المرسلات", "النبأ", "النازعات", "عبس",
-    "التكوير", "الانفطار", "المطففين", "الانشقاق", "البروج", "الطارق", "الأعلى", "الغاشية", "الفجر", "البلد",
-    "الشمس", "الليل", "الضحى", "الشرح", "التين", "العلق", "القدر", "البينة", "الزلزلة", "العاديات",
-    "القارعة", "التكاثر", "العصر", "الهمزة", "الفيل", "قريش", "الماعون", "الكوثر", "الكافرون", "النصر",
-    "المسد", "الإخلاص", "الفلق", "الناس"
-]
-
-SURAH_PAGE_SIZE = 10
-SURAH_LIST_PAGE_SIZE = 15
-
-
-def get_quran_lang(user_id):
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    try:
-        c.execute("SELECT quran_lang FROM users WHERE user_id=?", (user_id,))
-        row = c.fetchone()
-    except sqlite3.OperationalError:
-        row = None
-    conn.close()
-
-    if not row or not row[0] or row[0] not in QURAN_TRANSLATIONS:
-        return "ar"
-
-    return row[0]
-
-
-def set_quran_lang(user_id, lang):
-    if lang not in QURAN_TRANSLATIONS:
-        lang = "ar"
-
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("UPDATE users SET quran_lang=? WHERE user_id=?", (lang, user_id))
-    conn.commit()
-    conn.close()
-
-
-def quran_main_menu(user_id):
-    lang = get_quran_lang(user_id)
-    lang_name = QURAN_TRANSLATIONS.get(lang, QURAN_TRANSLATIONS["ar"])["name"]
-
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("📖 المصحف", callback_data="quran_mushaf_0")],
-        [InlineKeyboardButton("🎲 آية عشوائية", callback_data="quran_random_ayah")],
-        [InlineKeyboardButton("📌 آية اليوم", callback_data="quran_daily")],
-        [InlineKeyboardButton(f"🌍 الترجمة: {lang_name}", callback_data="quran_lang_menu")],
-        [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")],
-    ])
-
-
-def quran_language_menu():
-    rows = []
-    row = []
-    for lang, data in QURAN_TRANSLATIONS.items():
-        row.append(InlineKeyboardButton(data["name"], callback_data=f"quran_set_lang_{lang}"))
-        if len(row) == 2:
-            rows.append(row)
-            row = []
-    if row:
-        rows.append(row)
-    rows.append([InlineKeyboardButton("⬅️ رجوع للقرآن", callback_data="quran")])
-    rows.append([InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")])
-    return InlineKeyboardMarkup(rows)
-
-
-def quran_mushaf_reply_menu(page=0, user_id=0):
-    max_page = (len(SURAH_NAMES) - 1) // SURAH_LIST_PAGE_SIZE
-    page = max(0, min(int(page), max_page))
-    start = page * SURAH_LIST_PAGE_SIZE
-    end = min(start + SURAH_LIST_PAGE_SIZE, len(SURAH_NAMES))
-
-    rows = [[KeyboardButton("القائمة الرئيسية")]]
-    current_row = []
-
-    for i in range(start, end):
-        current_row.append(KeyboardButton(f"{{ {SURAH_NAMES[i]} }}"))
-        if len(current_row) == 3:
-            rows.append(current_row)
-            current_row = []
-    if current_row:
-        rows.append(current_row)
-
-    nav = []
-    if page > 0:
-        nav.append(KeyboardButton("⬅️ السابق"))
-    if page < max_page:
-        nav.append(KeyboardButton("التالي ➡️"))
-    if nav:
-        rows.append(nav)
-
-    rows.append([KeyboardButton("🎲 آية عشوائية"), KeyboardButton("🌍 ترجمة القرآن")])
-    rows.append([KeyboardButton("🏠 القائمة الرئيسية")])
-
-    return ReplyKeyboardMarkup(
-        rows,
-        resize_keyboard=True,
-        one_time_keyboard=False,
-        input_field_placeholder="اختر السورة"
-    )
-
-
-def find_surah_number_from_button(text):
-    value = str(text or "").strip()
-    if value.startswith("{") and value.endswith("}"):
-        value = value[1:-1].strip()
-
-    if value in SURAH_NAMES:
-        return SURAH_NAMES.index(value) + 1
-
-    return None
-
-
-def fetch_surah_ayahs(surah_number, edition):
-    response = requests.get(
-        f"{QURAN_API}/surah/{surah_number}/{edition}",
-        timeout=20
-    )
-    response.raise_for_status()
-    return response.json()["data"]
-
-
-def render_surah_page(surah_number, page, lang="ar"):
-    surah_number = int(surah_number)
-    page = max(0, int(page))
-    lang = lang if lang in QURAN_TRANSLATIONS else "ar"
-
-    ar_data = fetch_surah_ayahs(surah_number, "quran-uthmani")
-    ar_ayahs = ar_data["ayahs"]
-    total_ayahs = len(ar_ayahs)
-    max_page = max(0, (total_ayahs - 1) // SURAH_PAGE_SIZE)
-    page = min(page, max_page)
-
-    start = page * SURAH_PAGE_SIZE
-    end = min(start + SURAH_PAGE_SIZE, total_ayahs)
-
-    translation_ayahs = None
-    if lang != "ar":
-        edition = QURAN_TRANSLATIONS[lang]["edition"]
-        tr_data = fetch_surah_ayahs(surah_number, edition)
-        translation_ayahs = tr_data["ayahs"]
-
-    lang_name = QURAN_TRANSLATIONS[lang]["name"]
-    surah_name = ar_data.get("name", SURAH_NAMES[surah_number - 1])
-    surah_english = ar_data.get("englishName", "")
-
-    text = f"""📖 <b>{esc(surah_name)}</b>
-<b>سورة {esc(SURAH_NAMES[surah_number - 1])}</b> | {esc(surah_english)}
-
-الآيات <code>{start + 1}</code> - <code>{end}</code> من <code>{total_ayahs}</code>
-🌍 الترجمة: <b>{esc(lang_name)}</b>
-{line()}"""
-
-    for i in range(start, end):
-        ayah_no = ar_ayahs[i]["numberInSurah"]
-        text += f"<b>﴿{ayah_no}﴾</b> {esc(ar_ayahs[i]['text'])}\n"
-        if translation_ayahs:
-            text += f"<i>{esc(translation_ayahs[i]['text'])}</i>\n"
-        text += "\n"
-
-    buttons = []
-    nav = []
-    if page > 0:
-        nav.append(InlineKeyboardButton("⬅️ السابق", callback_data=f"quran_surah_{surah_number}_{page - 1}"))
-    if page < max_page:
-        nav.append(InlineKeyboardButton("التالي ➡️", callback_data=f"quran_surah_{surah_number}_{page + 1}"))
-    if nav:
-        buttons.append(nav)
-
-    buttons.append([InlineKeyboardButton("🌍 تغيير الترجمة", callback_data="quran_lang_menu")])
-    buttons.append([InlineKeyboardButton("📖 اختيار سورة", callback_data="quran_mushaf_0")])
-    buttons.append([InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")])
-
-    return text, InlineKeyboardMarkup(buttons), page
-
-
-def random_ayah_message_for_user(user_id):
-    lang = get_quran_lang(user_id)
-    number = random.randint(1, 6236)
-
-    ar = get_ayah_by_number(number, "quran-uthmani")
-
-    text = f"""🎲 <b>آية عشوائية</b>
-{line()}
-🇸🇦 <b>العربية</b>
-
-{esc(ar["text"])}
-"""
-
-    if lang != "ar":
-        edition = QURAN_TRANSLATIONS[lang]["edition"]
-        tr = get_ayah_by_number(number, edition)
-        text += f"""
-{line()}
-{esc(QURAN_TRANSLATIONS[lang]["name"])}
-
-{esc(tr["text"])}
-"""
-
-    ayah_ref = f"{ar['surah_number']}:{ar['ayah_number']}"
-    text += f"""
-{line()}
-📖 <b>السورة:</b> {esc(ar["surah_name"])} | {esc(ar["surah_english"])}
-🔢 <b>الآية:</b> <code>{esc(ayah_ref)}</code>
-"""
-
-    return text
-
-
-# =====================================================
 # Dua of the Day
 # =====================================================
 
@@ -1624,42 +1422,345 @@ def language_display(lang):
     return f"{item['flag']} {item['name']}"
 
 
+BOT_TEXTS = {
+    "ar": {
+        "welcome": "🌉 <b>مرحبًا بك في Ummah Bridge</b>\n\nاختر من القائمة أسفل الشاشة:",
+        "choose": "اختر من القائمة",
+        "quran": "📖 القرآن",
+        "hadith": "🕊️ الأحاديث",
+        "adhkar": "🤲 الأذكار",
+        "quiz": "🧠 سؤال إسلامي",
+        "learn": "🧭 تعلم الإسلام",
+        "bot_language": "🌍 لغة البوت",
+        "about": "ℹ️ عن المشروع",
+        "telegram": "🌐 Telegram",
+        "whatsapp": "🟢 WhatsApp",
+        "home": "🏠 القائمة الرئيسية",
+        "admin": "🛠️ لوحة الإدارة",
+        "learn_title": "🧭 <b>تعلم الإسلام</b>\n\nاختر درسًا قصيرًا:",
+        "language_title": "🌍 <b>اختر لغة البوت:</b>",
+        "language_saved": "✅ تم تغيير لغة البوت إلى:",
+        "unknown": "استخدم القائمة أسفل الشاشة أو اضغط /start.",
+    },
+    "en": {
+        "welcome": "🌉 <b>Welcome to Ummah Bridge</b>\n\nChoose from the menu below:",
+        "choose": "Choose from the menu",
+        "quran": "📖 Quran",
+        "hadith": "🕊️ Hadiths",
+        "adhkar": "🤲 Adhkar",
+        "quiz": "🧠 Islamic Quiz",
+        "learn": "🧭 Learn Islam",
+        "bot_language": "🌍 Bot Language",
+        "about": "ℹ️ About",
+        "telegram": "🌐 Telegram",
+        "whatsapp": "🟢 WhatsApp",
+        "home": "🏠 Main Menu",
+        "admin": "🛠️ Admin Panel",
+        "learn_title": "🧭 <b>Learn Islam</b>\n\nChoose a short lesson:",
+        "language_title": "🌍 <b>Choose bot language:</b>",
+        "language_saved": "✅ Bot language changed to:",
+        "unknown": "Use the menu below or press /start.",
+    },
+    "de": {
+        "welcome": "🌉 <b>Willkommen bei Ummah Bridge</b>\n\nWähle aus dem Menü unten:",
+        "choose": "Aus dem Menü wählen",
+        "quran": "📖 Quran",
+        "hadith": "🕊️ Hadithe",
+        "adhkar": "🤲 Adhkar",
+        "quiz": "🧠 Islamisches Quiz",
+        "learn": "🧭 Islam lernen",
+        "bot_language": "🌍 Bot-Sprache",
+        "about": "ℹ️ Über das Projekt",
+        "telegram": "🌐 Telegram",
+        "whatsapp": "🟢 WhatsApp",
+        "home": "🏠 Hauptmenü",
+        "admin": "🛠️ Admin-Bereich",
+        "learn_title": "🧭 <b>Islam lernen</b>\n\nWähle eine kurze Lektion:",
+        "language_title": "🌍 <b>Bot-Sprache wählen:</b>",
+        "language_saved": "✅ Bot-Sprache geändert zu:",
+        "unknown": "Nutze das Menü unten oder drücke /start.",
+    },
+    "fr": {
+        "welcome": "🌉 <b>Bienvenue sur Ummah Bridge</b>\n\nChoisissez dans le menu ci-dessous:",
+        "choose": "Choisir dans le menu",
+        "quran": "📖 Coran",
+        "hadith": "🕊️ Hadiths",
+        "adhkar": "🤲 Adhkar",
+        "quiz": "🧠 Quiz islamique",
+        "learn": "🧭 Apprendre l’islam",
+        "bot_language": "🌍 Langue du bot",
+        "about": "ℹ️ À propos",
+        "telegram": "🌐 Telegram",
+        "whatsapp": "🟢 WhatsApp",
+        "home": "🏠 Menu principal",
+        "admin": "🛠️ Administration",
+        "learn_title": "🧭 <b>Apprendre l’islam</b>\n\nChoisissez une courte leçon:",
+        "language_title": "🌍 <b>Choisissez la langue du bot:</b>",
+        "language_saved": "✅ Langue du bot changée en:",
+        "unknown": "Utilisez le menu ci-dessous ou appuyez sur /start.",
+    },
+    "es": {
+        "welcome": "🌉 <b>Bienvenido a Ummah Bridge</b>\n\nElige en el menú de abajo:",
+        "choose": "Elige del menú",
+        "quran": "📖 Corán",
+        "hadith": "🕊️ Hadices",
+        "adhkar": "🤲 Adhkar",
+        "quiz": "🧠 Quiz islámico",
+        "learn": "🧭 Aprender Islam",
+        "bot_language": "🌍 Idioma del bot",
+        "about": "ℹ️ Acerca de",
+        "telegram": "🌐 Telegram",
+        "whatsapp": "🟢 WhatsApp",
+        "home": "🏠 Menú principal",
+        "admin": "🛠️ Administración",
+        "learn_title": "🧭 <b>Aprender Islam</b>\n\nElige una lección corta:",
+        "language_title": "🌍 <b>Elige el idioma del bot:</b>",
+        "language_saved": "✅ Idioma del bot cambiado a:",
+        "unknown": "Usa el menú de abajo o pulsa /start.",
+    },
+    "tr": {
+        "welcome": "🌉 <b>Ummah Bridge'e hoş geldiniz</b>\n\nAşağıdaki menüden seçin:",
+        "choose": "Menüden seçin",
+        "quran": "📖 Kur’an",
+        "hadith": "🕊️ Hadisler",
+        "adhkar": "🤲 Zikirler",
+        "quiz": "🧠 İslami soru",
+        "learn": "🧭 İslamı öğren",
+        "bot_language": "🌍 Bot dili",
+        "about": "ℹ️ Hakkında",
+        "telegram": "🌐 Telegram",
+        "whatsapp": "🟢 WhatsApp",
+        "home": "🏠 Ana menü",
+        "admin": "🛠️ Yönetim paneli",
+        "learn_title": "🧭 <b>İslamı öğren</b>\n\nKısa bir ders seçin:",
+        "language_title": "🌍 <b>Bot dilini seçin:</b>",
+        "language_saved": "✅ Bot dili değiştirildi:",
+        "unknown": "Aşağıdaki menüyü kullanın veya /start yazın.",
+    },
+    "id": {
+        "welcome": "🌉 <b>Selamat datang di Ummah Bridge</b>\n\nPilih dari menu di bawah:",
+        "choose": "Pilih dari menu",
+        "quran": "📖 Quran",
+        "hadith": "🕊️ Hadis",
+        "adhkar": "🤲 Adhkar",
+        "quiz": "🧠 Kuis Islam",
+        "learn": "🧭 Belajar Islam",
+        "bot_language": "🌍 Bahasa bot",
+        "about": "ℹ️ Tentang",
+        "telegram": "🌐 Telegram",
+        "whatsapp": "🟢 WhatsApp",
+        "home": "🏠 Menu utama",
+        "admin": "🛠️ Panel admin",
+        "learn_title": "🧭 <b>Belajar Islam</b>\n\nPilih pelajaran singkat:",
+        "language_title": "🌍 <b>Pilih bahasa bot:</b>",
+        "language_saved": "✅ Bahasa bot diubah ke:",
+        "unknown": "Gunakan menu di bawah atau tekan /start.",
+    },
+    "ur": {
+        "welcome": "🌉 <b>Ummah Bridge میں خوش آمدید</b>\n\nنیچے مینو سے منتخب کریں:",
+        "choose": "مینو سے منتخب کریں",
+        "quran": "📖 قرآن",
+        "hadith": "🕊️ احادیث",
+        "adhkar": "🤲 اذکار",
+        "quiz": "🧠 اسلامی سوال",
+        "learn": "🧭 اسلام سیکھیں",
+        "bot_language": "🌍 بوٹ کی زبان",
+        "about": "ℹ️ تعارف",
+        "telegram": "🌐 Telegram",
+        "whatsapp": "🟢 WhatsApp",
+        "home": "🏠 مین مینو",
+        "admin": "🛠️ ایڈمن پینل",
+        "learn_title": "🧭 <b>اسلام سیکھیں</b>\n\nایک مختصر سبق منتخب کریں:",
+        "language_title": "🌍 <b>بوٹ کی زبان منتخب کریں:</b>",
+        "language_saved": "✅ بوٹ کی زبان تبدیل ہو گئی:",
+        "unknown": "نیچے مینو استعمال کریں یا /start دبائیں.",
+    },
+    "hi": {
+        "welcome": "🌉 <b>Ummah Bridge में आपका स्वागत है</b>\n\nनीचे मेनू से चुनें:",
+        "choose": "मेनू से चुनें",
+        "quran": "📖 कुरआन",
+        "hadith": "🕊️ हदीस",
+        "adhkar": "🤲 अज़कार",
+        "quiz": "🧠 इस्लामी प्रश्न",
+        "learn": "🧭 इस्लाम सीखें",
+        "bot_language": "🌍 बॉट भाषा",
+        "about": "ℹ️ परिचय",
+        "telegram": "🌐 Telegram",
+        "whatsapp": "🟢 WhatsApp",
+        "home": "🏠 मुख्य मेनू",
+        "admin": "🛠️ एडमिन पैनल",
+        "learn_title": "🧭 <b>इस्लाम सीखें</b>\n\nएक छोटा पाठ चुनें:",
+        "language_title": "🌍 <b>बॉट भाषा चुनें:</b>",
+        "language_saved": "✅ बॉट भाषा बदल गई:",
+        "unknown": "नीचे मेनू उपयोग करें या /start दबाएँ.",
+    },
+}
+
+
+LEARN_TOPIC_LABELS = {
+    "what_is_islam": {"ar": "🧭 ما هو الإسلام؟", "en": "🧭 What is Islam?", "de": "🧭 Was ist Islam?"},
+    "pillars_islam": {"ar": "🕋 أركان الإسلام", "en": "🕋 Pillars of Islam", "de": "🕋 Säulen des Islam"},
+    "pillars_iman": {"ar": "✨ أركان الإيمان", "en": "✨ Pillars of Faith", "de": "✨ Säulen des Glaubens"},
+    "how_to_pray": {"ar": "🤲 كيف أصلي؟", "en": "🤲 How do I pray?", "de": "🤲 Wie bete ich?"},
+    "how_to_read_quran": {"ar": "📖 كيف أقرأ القرآن؟", "en": "📖 How do I read Quran?", "de": "📖 Wie lese ich den Quran?"},
+    "ramadan": {"ar": "🌙 ما هو رمضان؟", "en": "🌙 What is Ramadan?", "de": "🌙 Was ist Ramadan?"},
+}
+
+
+LEARN_ISLAM_CONTENT = {
+    "what_is_islam": {
+        "ar": "🧭 <b>ما هو الإسلام؟</b>\n\nالإسلام هو الاستسلام لله وحده، وعبادته، واتباع رسوله محمد ﷺ.\n\nيدعو الإسلام إلى التوحيد، والرحمة، والعدل، وحسن الخلق.",
+        "en": "🧭 <b>What is Islam?</b>\n\nIslam means submitting to Allah alone, worshipping Him, and following His Messenger Muhammad ﷺ.\n\nIslam calls to monotheism, mercy, justice, and good character.",
+        "de": "🧭 <b>Was ist Islam?</b>\n\nIslam bedeutet, sich Allah allein zu ergeben, Ihn anzubeten und Seinem Gesandten Muhammad ﷺ zu folgen.\n\nDer Islam ruft zu Monotheismus, Barmherzigkeit, Gerechtigkeit und gutem Charakter auf.",
+    },
+    "pillars_islam": {
+        "ar": "🕋 <b>أركان الإسلام</b>\n\n1. الشهادتان\n2. الصلاة\n3. الزكاة\n4. صوم رمضان\n5. حج البيت لمن استطاع إليه سبيلًا",
+        "en": "🕋 <b>The Pillars of Islam</b>\n\n1. The testimony of faith\n2. Prayer\n3. Zakat\n4. Fasting Ramadan\n5. Hajj for those who are able",
+        "de": "🕋 <b>Die Säulen des Islam</b>\n\n1. Das Glaubensbekenntnis\n2. Das Gebet\n3. Zakat\n4. Fasten im Ramadan\n5. Hajj für diejenigen, die dazu in der Lage sind",
+    },
+    "pillars_iman": {
+        "ar": "✨ <b>أركان الإيمان</b>\n\nالإيمان بالله، وملائكته، وكتبه، ورسله، واليوم الآخر، والقدر خيره وشره.",
+        "en": "✨ <b>The Pillars of Faith</b>\n\nBelief in Allah, His angels, His books, His messengers, the Last Day, and divine decree, its good and its bad.",
+        "de": "✨ <b>Die Säulen des Glaubens</b>\n\nDer Glaube an Allah, Seine Engel, Seine Bücher, Seine Gesandten, den Jüngsten Tag und die Vorherbestimmung, das Gute und das Schlechte davon.",
+    },
+    "how_to_pray": {
+        "ar": "🤲 <b>كيف أصلي؟</b>\n\nالصلاة عبادة عظيمة تبدأ بالطهارة والوضوء، ثم استقبال القبلة، ثم الصلاة كما علّم النبي ﷺ.\n\nابدأ بتعلّم الفاتحة، والقيام، والركوع، والسجود، والتشهد.",
+        "en": "🤲 <b>How do I pray?</b>\n\nPrayer begins with purification and wudu, then facing the qiblah, and praying as the Prophet ﷺ taught.\n\nStart by learning Al-Fatihah, standing, bowing, prostration, and tashahhud.",
+        "de": "🤲 <b>Wie bete ich?</b>\n\nDas Gebet beginnt mit Reinigung und Wudu, dann wendet man sich zur Qibla und betet, wie der Prophet ﷺ es lehrte.\n\nBeginne mit Al-Fatiha, Stehen, Verbeugung, Niederwerfung und Tashahhud.",
+    },
+    "how_to_read_quran": {
+        "ar": "📖 <b>كيف أقرأ القرآن؟</b>\n\nابدأ بسور قصيرة، واقرأ بطمأنينة، واستمع لقارئ متقن.\n\nالترجمة تساعد على فهم المعنى، لكن النص العربي هو الأصل.",
+        "en": "📖 <b>How do I read Quran?</b>\n\nStart with short surahs, read calmly, and listen to a skilled reciter.\n\nTranslation helps you understand the meaning, but the Arabic text is the original.",
+        "de": "📖 <b>Wie lese ich den Quran?</b>\n\nBeginne mit kurzen Suren, lies ruhig und höre einem guten Rezitator zu.\n\nÜbersetzungen helfen beim Verständnis, aber der arabische Text ist das Original.",
+    },
+    "ramadan": {
+        "ar": "🌙 <b>ما هو رمضان؟</b>\n\nرمضان شهر الصيام والقرآن والعبادة. يصوم المسلم من الفجر إلى المغرب تقربًا إلى الله.\n\nهو شهر الصبر، والرحمة، ومراجعة النفس.",
+        "en": "🌙 <b>What is Ramadan?</b>\n\nRamadan is the month of fasting, Quran, and worship. Muslims fast from dawn to sunset seeking closeness to Allah.\n\nIt is a month of patience, mercy, and self-reflection.",
+        "de": "🌙 <b>Was ist Ramadan?</b>\n\nRamadan ist der Monat des Fastens, des Qurans und der Anbetung. Muslime fasten von der Morgendämmerung bis zum Sonnenuntergang.\n\nEs ist ein Monat der Geduld, Barmherzigkeit und Selbstprüfung.",
+    },
+}
+
+
+def t(user_id, key):
+    lang = get_bot_lang(user_id)
+    return BOT_TEXTS.get(lang, BOT_TEXTS["ar"]).get(key, BOT_TEXTS["ar"].get(key, key))
+
+
+def bot_lang_name(lang):
+    names = {
+        "ar": "🇸🇦 العربية",
+        "en": "🇬🇧 English",
+        "de": "🇩🇪 Deutsch",
+        "fr": "🇫🇷 Français",
+        "es": "🇪🇸 Español",
+        "tr": "🇹🇷 Türkçe",
+        "id": "🇮🇩 Indonesia",
+        "ur": "🇺🇷 اردو",
+        "hi": "🇮🇳 हिन्दी",
+    }
+    return names.get(lang, lang)
+
+
 def reply_main_menu(user_id):
     rows = [
-        [KeyboardButton("📖 القرآن"), KeyboardButton("🕊️ الأحاديث")],
-        [KeyboardButton("🤲 الأذكار"), KeyboardButton("🧠 سؤال إسلامي")],
-        [KeyboardButton("🌍 تغيير اللغة"), KeyboardButton("ℹ️ عن المشروع")],
-        [KeyboardButton("🌐 Telegram"), KeyboardButton("🟢 WhatsApp")],
-        [KeyboardButton("🏠 القائمة الرئيسية")],
+        [KeyboardButton(t(user_id, "quran")), KeyboardButton(t(user_id, "hadith"))],
+        [KeyboardButton(t(user_id, "adhkar")), KeyboardButton(t(user_id, "quiz"))],
+        [KeyboardButton(t(user_id, "learn")), KeyboardButton(t(user_id, "bot_language"))],
+        [KeyboardButton(t(user_id, "about"))],
+        [KeyboardButton(t(user_id, "telegram")), KeyboardButton(t(user_id, "whatsapp"))],
+        [KeyboardButton(t(user_id, "home"))],
     ]
 
     if is_admin(user_id):
-        rows.append([KeyboardButton("🛠️ لوحة الإدارة")])
+        rows.append([KeyboardButton(t(user_id, "admin"))])
 
     return ReplyKeyboardMarkup(
         rows,
         resize_keyboard=True,
         one_time_keyboard=False,
-        input_field_placeholder="اختر من القائمة"
+        input_field_placeholder=BOT_TEXTS.get(get_bot_lang(user_id), BOT_TEXTS["ar"]).get("choose", "Choose")
     )
+
+
+def is_menu_text(text, key):
+    text = (text or "").strip()
+    for pack in BOT_TEXTS.values():
+        if text == pack.get(key):
+            return True
+    legacy = {
+        "quran": ["📖 القرآن"],
+        "hadith": ["🕊️ الأحاديث"],
+        "adhkar": ["🤲 الأذكار"],
+        "quiz": ["🧠 سؤال إسلامي"],
+        "learn": ["🧭 تعلم الإسلام"],
+        "bot_language": ["🌍 تغيير اللغة", "🌍 لغة البوت"],
+        "about": ["ℹ️ عن المشروع"],
+        "telegram": ["🌐 Telegram"],
+        "whatsapp": ["🟢 WhatsApp"],
+        "home": ["🏠 القائمة الرئيسية", "القائمة الرئيسية", "/menu"],
+        "admin": ["🛠️ لوحة الإدارة"],
+    }
+    return text in legacy.get(key, [])
 
 
 def main_menu(user_id):
     buttons = [
-        [InlineKeyboardButton("📖 القرآن", callback_data="quran")],
-        [InlineKeyboardButton("🕊️ الأحاديث", callback_data="hadith")],
-        [InlineKeyboardButton("🤲 الأذكار", callback_data="adhkar_menu")],
-        [InlineKeyboardButton("ℹ️ عن المشروع", callback_data="about")],
-        [InlineKeyboardButton("🌐 قناة Telegram", url="https://t.me/UMMAHBRIDGE")]
+        [InlineKeyboardButton(t(user_id, "quran"), callback_data="quran")],
+        [InlineKeyboardButton(t(user_id, "hadith"), callback_data="hadith")],
+        [InlineKeyboardButton(t(user_id, "adhkar"), callback_data="adhkar_menu")],
+        [InlineKeyboardButton(t(user_id, "learn"), callback_data="learn_islam")],
+        [InlineKeyboardButton(t(user_id, "bot_language"), callback_data="bot_language_menu")],
+        [InlineKeyboardButton(t(user_id, "about"), callback_data="about")],
+        [InlineKeyboardButton(t(user_id, "telegram"), url="https://t.me/UMMAHBRIDGE")]
     ]
 
     if WHATSAPP_CHANNEL_URL:
-        buttons.append([InlineKeyboardButton("🟢 قناة WhatsApp", url=WHATSAPP_CHANNEL_URL)])
+        buttons.append([InlineKeyboardButton(t(user_id, "whatsapp"), url=WHATSAPP_CHANNEL_URL)])
 
     if is_admin(user_id):
-        buttons.append([InlineKeyboardButton("🛠️ لوحة الإدارة", callback_data="admin")])
+        buttons.append([InlineKeyboardButton(t(user_id, "admin"), callback_data="admin")])
 
     return InlineKeyboardMarkup(buttons)
+
+
+def bot_language_menu(user_id):
+    rows = [
+        [
+            InlineKeyboardButton("🇸🇦 العربية", callback_data="botlang_ar"),
+            InlineKeyboardButton("🇬🇧 English", callback_data="botlang_en"),
+        ],
+        [
+            InlineKeyboardButton("🇩🇪 Deutsch", callback_data="botlang_de"),
+            InlineKeyboardButton("🇫🇷 Français", callback_data="botlang_fr"),
+        ],
+        [
+            InlineKeyboardButton("🇪🇸 Español", callback_data="botlang_es"),
+            InlineKeyboardButton("🇹🇷 Türkçe", callback_data="botlang_tr"),
+        ],
+        [
+            InlineKeyboardButton("🇮🇩 Indonesia", callback_data="botlang_id"),
+            InlineKeyboardButton("🇺🇷 اردو", callback_data="botlang_ur"),
+        ],
+        [
+            InlineKeyboardButton("🇮🇳 हिन्दी", callback_data="botlang_hi"),
+        ],
+        [InlineKeyboardButton(t(user_id, "home"), callback_data="home")]
+    ]
+    return InlineKeyboardMarkup(rows)
+
+
+def learn_topic_label(topic, lang):
+    labels = LEARN_TOPIC_LABELS.get(topic, {})
+    return labels.get(lang, labels.get("en", labels.get("ar", topic)))
+
+
+def learn_islam_menu(user_id):
+    lang = get_bot_lang(user_id)
+    rows = []
+    for topic in LEARN_TOPIC_LABELS.keys():
+        rows.append([InlineKeyboardButton(learn_topic_label(topic, lang), callback_data=f"learn_{topic}")])
+    rows.append([InlineKeyboardButton(t(user_id, "home"), callback_data="home")])
+    return InlineKeyboardMarkup(rows)
 
 
 def hadith_menu():
@@ -2172,7 +2273,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
     await update.message.reply_text(
-        "🌉 <b>مرحبًا بك في Ummah Bridge</b>\n\nاختر من القائمة أسفل الشاشة:",
+        t(user_id, "welcome"),
         reply_markup=reply_main_menu(user_id),
         parse_mode="HTML"
     )
@@ -2493,62 +2594,61 @@ Pending ID: <code>{new_pending_id}</code>
         )
 
     elif data == "home":
-        await safe_edit(
-            q,
-            "🌉 <b>Ummah Bridge</b>\n\nاختر من القائمة:",
-            main_menu(user_id)
-        )
-
-    elif data == "quran":
-        lang = get_quran_lang(user_id)
-        await safe_edit(
-            q,
-            f"📖 <b>قسم القرآن الكريم</b>\n\nاختر من القائمة:\n\n🌍 الترجمة الحالية: <b>{esc(QURAN_TRANSLATIONS[lang]['name'])}</b>",
-            quran_main_menu(user_id)
-        )
-
-    elif data.startswith("quran_mushaf_"):
-        page = int(data.replace("quran_mushaf_", "", 1))
-        context.user_data["surah_list_page"] = page
         await q.message.reply_text(
-            "📖 <b>المصحف</b>\n\nفضلاً اختر السورة المراد قراءتها...",
-            reply_markup=quran_mushaf_reply_menu(page, user_id),
+            t(user_id, "welcome"),
+            reply_markup=reply_main_menu(user_id),
             parse_mode="HTML"
         )
 
-    elif data.startswith("quran_surah_"):
-        try:
-            parts = data.split("_")
-            surah_number = int(parts[2])
-            page = int(parts[3])
-            lang = get_quran_lang(user_id)
-            text, markup, _ = render_surah_page(surah_number, page, lang)
-            await safe_edit(q, text, markup)
-        except Exception as e:
-            await safe_edit(q, f"❌ خطأ في جلب السورة:\n<code>{esc(e)}</code>", quran_main_menu(user_id))
+    elif data == "bot_language_menu":
+        await safe_edit(q, t(user_id, "language_title"), bot_language_menu(user_id))
 
-    elif data == "quran_random_ayah":
-        try:
-            text = random_ayah_message_for_user(user_id)
-            await safe_edit(q, text, quran_main_menu(user_id))
-        except Exception as e:
-            await safe_edit(q, f"❌ خطأ في جلب الآية:\n<code>{esc(e)}</code>", quran_main_menu(user_id))
-
-    elif data == "quran_daily":
-        text, ayah_ref = quran_channel_message()
-        await safe_edit(q, text, quran_main_menu(user_id))
-
-    elif data == "quran_lang_menu":
-        await safe_edit(q, "🌍 <b>اختر ترجمة القرآن:</b>", quran_language_menu())
-
-    elif data.startswith("quran_set_lang_"):
-        lang = data.replace("quran_set_lang_", "", 1)
-        set_quran_lang(user_id, lang)
-        await safe_edit(
-            q,
-            f"✅ تم تغيير ترجمة القرآن إلى: <b>{esc(QURAN_TRANSLATIONS[lang]['name'])}</b>",
-            quran_main_menu(user_id)
+    elif data.startswith("botlang_"):
+        lang = data.replace("botlang_", "", 1)
+        set_bot_lang(user_id, lang)
+        await q.message.reply_text(
+            f"{t(user_id, 'language_saved')} <b>{esc(bot_lang_name(lang))}</b>",
+            reply_markup=reply_main_menu(user_id),
+            parse_mode="HTML"
         )
+
+    elif data == "learn_islam":
+        await safe_edit(q, t(user_id, "learn_title"), learn_islam_menu(user_id))
+
+    elif data.startswith("learn_"):
+        topic = data.replace("learn_", "", 1)
+        lang = get_bot_lang(user_id)
+        content_pack = LEARN_ISLAM_CONTENT.get(topic)
+
+        if not content_pack:
+            await safe_edit(q, "❌ Lesson not found.", learn_islam_menu(user_id))
+            return
+
+        content = content_pack.get(lang) or content_pack.get("en") or content_pack.get("ar")
+        await safe_edit(q, content, learn_islam_menu(user_id))
+
+    elif data == "quran":
+        try:
+            res = requests.get(
+                f"{QURAN_API}/surah/1/quran-uthmani",
+                timeout=15
+            )
+            res.raise_for_status()
+
+            ayat = res.json()["data"]["ayahs"]
+            text = "📖 <b>سورة الفاتحة</b>" + line()
+
+            for a in ayat:
+                text += f"{esc(a['text'])}\n"
+
+            await safe_edit(q, text, back())
+
+        except Exception as e:
+            await safe_edit(
+                q,
+                f"❌ خطأ في جلب القرآن:\n<code>{esc(e)}</code>",
+                back()
+            )
 
     elif data == "hadith":
         await safe_edit(
@@ -3013,19 +3113,35 @@ Pending ID: <code>{new_pending_id}</code>
 
 
 # =====================================================
-# Reply Keyboard Menu Handler
+# Reply Keyboard Main Menu
 # =====================================================
 
-async def send_quran_section_from_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-    context.user_data["surah_list_page"] = 0
-    lang = get_quran_lang(user_id)
+async def send_fatiha_from_menu(update: Update):
+    try:
+        res = requests.get(
+            f"{QURAN_API}/surah/1/quran-uthmani",
+            timeout=15
+        )
+        res.raise_for_status()
 
-    await update.message.reply_text(
-        f"📖 <b>المصحف</b>\n\nفضلاً اختر السورة المراد قراءتها...\n\n🌍 الترجمة الحالية: <b>{esc(QURAN_TRANSLATIONS[lang]['name'])}</b>",
-        reply_markup=quran_mushaf_reply_menu(0, user_id),
-        parse_mode="HTML"
-    )
+        ayat = res.json()["data"]["ayahs"]
+        text = "📖 <b>سورة الفاتحة</b>" + line()
+
+        for a in ayat:
+            text += f"{esc(a['text'])}\n"
+
+        await update.message.reply_text(
+            text,
+            reply_markup=back(),
+            parse_mode="HTML"
+        )
+
+    except Exception as e:
+        await update.message.reply_text(
+            f"❌ خطأ في جلب القرآن:\n<code>{esc(e)}</code>",
+            reply_markup=back(),
+            parse_mode="HTML"
+        )
 
 
 async def send_about_from_menu(update: Update):
@@ -3045,6 +3161,7 @@ async def send_about_from_menu(update: Update):
 📖 آية اليوم.
 🤲 دعاء اليوم.
 🧠 سؤال إسلامي تفاعلي.
+🧭 تعلم الإسلام بلغات متعددة.
 
 🤲 يحتوي البوت على أذكار الصباح والمساء بلغات متعددة مع عداد تكرار.
 🔥 ويحتوي على إنجاز يومي وسلسلة أيام للأذكار.
@@ -3065,81 +3182,21 @@ async def send_about_from_menu(update: Update):
 
 async def handle_reply_keyboard_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
-    chat_id = update.message.chat_id
     text = (update.message.text or "").strip()
 
-    if text in ["🏠 القائمة الرئيسية", "القائمة الرئيسية", "/menu"]:
-        context.user_data.pop("surah_list_page", None)
+    if is_menu_text(text, "home"):
         await update.message.reply_text(
-            "🌉 <b>Ummah Bridge</b>\n\nاختر من القائمة أسفل الشاشة:",
+            t(user_id, "welcome"),
             reply_markup=reply_main_menu(user_id),
             parse_mode="HTML"
         )
         return True
 
-    if text == "📖 القرآن":
-        await send_quran_section_from_menu(update, context)
+    if is_menu_text(text, "quran"):
+        await send_fatiha_from_menu(update)
         return True
 
-    if text in ["التالي ➡️", "⬅️ السابق"]:
-        page = int(context.user_data.get("surah_list_page", 0))
-        if text == "التالي ➡️":
-            page += 1
-        else:
-            page -= 1
-        max_page = (len(SURAH_NAMES) - 1) // SURAH_LIST_PAGE_SIZE
-        page = max(0, min(page, max_page))
-        context.user_data["surah_list_page"] = page
-        await update.message.reply_text(
-            f"📖 <b>المصحف</b>\n\nفضلاً اختر السورة المراد قراءتها...\n\nصفحة السور: <code>{page + 1}</code> / <code>{max_page + 1}</code>",
-            reply_markup=quran_mushaf_reply_menu(page, user_id),
-            parse_mode="HTML"
-        )
-        return True
-
-    surah_number = find_surah_number_from_button(text)
-    if surah_number:
-        try:
-            lang = get_quran_lang(user_id)
-            surah_text, markup, _ = render_surah_page(surah_number, 0, lang)
-            await update.message.reply_text(
-                surah_text,
-                reply_markup=markup,
-                parse_mode="HTML",
-                disable_web_page_preview=True
-            )
-        except Exception as e:
-            await update.message.reply_text(
-                f"❌ خطأ في جلب السورة:\n<code>{esc(e)}</code>",
-                parse_mode="HTML"
-            )
-        return True
-
-    if text == "🎲 آية عشوائية":
-        try:
-            ayah_text = random_ayah_message_for_user(user_id)
-            await update.message.reply_text(
-                ayah_text,
-                reply_markup=quran_main_menu(user_id),
-                parse_mode="HTML",
-                disable_web_page_preview=True
-            )
-        except Exception as e:
-            await update.message.reply_text(
-                f"❌ خطأ في جلب الآية:\n<code>{esc(e)}</code>",
-                parse_mode="HTML"
-            )
-        return True
-
-    if text in ["🌍 ترجمة القرآن", "🌍 تغيير اللغة"]:
-        await update.message.reply_text(
-            "🌍 <b>اختر الترجمة:</b>",
-            reply_markup=quran_language_menu(),
-            parse_mode="HTML"
-        )
-        return True
-
-    if text == "🕊️ الأحاديث":
+    if is_menu_text(text, "hadith"):
         await update.message.reply_text(
             "🕊️ <b>قسم الأحاديث</b>",
             reply_markup=hadith_menu(),
@@ -3147,7 +3204,7 @@ async def handle_reply_keyboard_menu(update: Update, context: ContextTypes.DEFAU
         )
         return True
 
-    if text == "🤲 الأذكار":
+    if is_menu_text(text, "adhkar"):
         lang = get_adhkar_lang(user_id)
         await update.message.reply_text(
             f"🤲 <b>قسم الأذكار</b>\n\n"
@@ -3158,7 +3215,7 @@ async def handle_reply_keyboard_menu(update: Update, context: ContextTypes.DEFAU
         )
         return True
 
-    if text == "🧠 سؤال إسلامي":
+    if is_menu_text(text, "quiz"):
         quiz = random_quiz()
         quiz_text, quiz_markup = render_quiz_question(quiz)
         await update.message.reply_text(
@@ -3168,26 +3225,42 @@ async def handle_reply_keyboard_menu(update: Update, context: ContextTypes.DEFAU
         )
         return True
 
-    if text == "ℹ️ عن المشروع":
+    if is_menu_text(text, "learn"):
+        await update.message.reply_text(
+            t(user_id, "learn_title"),
+            reply_markup=learn_islam_menu(user_id),
+            parse_mode="HTML"
+        )
+        return True
+
+    if is_menu_text(text, "bot_language"):
+        await update.message.reply_text(
+            t(user_id, "language_title"),
+            reply_markup=bot_language_menu(user_id),
+            parse_mode="HTML"
+        )
+        return True
+
+    if is_menu_text(text, "about"):
         await send_about_from_menu(update)
         return True
 
-    if text == "🌐 Telegram":
+    if is_menu_text(text, "telegram"):
         await update.message.reply_text(
-            "🌐 قناة Telegram الرسمية:",
+            "🌐 Telegram:",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🌐 فتح قناة Telegram", url="https://t.me/UMMAHBRIDGE")]
+                [InlineKeyboardButton("🌐 Open Telegram", url="https://t.me/UMMAHBRIDGE")]
             ]),
             parse_mode="HTML"
         )
         return True
 
-    if text == "🟢 WhatsApp":
+    if is_menu_text(text, "whatsapp"):
         if WHATSAPP_CHANNEL_URL:
             await update.message.reply_text(
-                "🟢 قناة WhatsApp الرسمية:",
+                "🟢 WhatsApp:",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("🟢 فتح قناة WhatsApp", url=WHATSAPP_CHANNEL_URL)]
+                    [InlineKeyboardButton("🟢 Open WhatsApp", url=WHATSAPP_CHANNEL_URL)]
                 ]),
                 parse_mode="HTML",
                 disable_web_page_preview=True
@@ -3196,7 +3269,7 @@ async def handle_reply_keyboard_menu(update: Update, context: ContextTypes.DEFAU
             await update.message.reply_text("❌ رابط قناة WhatsApp غير مضاف بعد.")
         return True
 
-    if text == "🛠️ لوحة الإدارة":
+    if is_menu_text(text, "admin"):
         if not is_admin(user_id):
             await update.message.reply_text("❌ هذا القسم خاص بالمشرف فقط.")
             return True
@@ -3209,6 +3282,7 @@ async def handle_reply_keyboard_menu(update: Update, context: ContextTypes.DEFAU
         return True
 
     return False
+
 
 
 # =====================================================
@@ -3311,7 +3385,7 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     await update.message.reply_text(
-        "استخدم القائمة أسفل الشاشة أو اضغط /start.",
+        t(user_id, "unknown"),
         reply_markup=reply_main_menu(user_id),
         parse_mode="HTML"
     )
