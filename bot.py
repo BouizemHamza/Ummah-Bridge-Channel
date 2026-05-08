@@ -37,6 +37,8 @@ from adhkar_data import (
     EVENING_ADHKAR,
 )
 
+from learn_islam_data import LEARN_ISLAM_TOPICS
+
 
 # =====================================================
 # ENV
@@ -1437,7 +1439,7 @@ BOT_TEXTS = {
         "whatsapp": "🟢 WhatsApp",
         "home": "🏠 القائمة الرئيسية",
         "admin": "🛠️ لوحة الإدارة",
-        "learn_title": "🧭 <b>تعلم الإسلام</b>\n\nاختر درسًا قصيرًا:",
+        "learn_title": "🧭 <b>تعلم الإسلام</b>\n\nاختر درسًا:",
         "language_title": "🌍 <b>اختر لغة البوت:</b>",
         "language_saved": "✅ تم تغيير لغة البوت إلى:",
         "unknown": "استخدم القائمة أسفل الشاشة أو اضغط /start.",
@@ -1456,7 +1458,7 @@ BOT_TEXTS = {
         "whatsapp": "🟢 WhatsApp",
         "home": "🏠 Main Menu",
         "admin": "🛠️ Admin Panel",
-        "learn_title": "🧭 <b>Learn Islam</b>\n\nChoose a short lesson:",
+        "learn_title": "🧭 <b>Learn Islam</b>\n\nChoose a lesson:",
         "language_title": "🌍 <b>Choose bot language:</b>",
         "language_saved": "✅ Bot language changed to:",
         "unknown": "Use the menu below or press /start.",
@@ -1475,7 +1477,7 @@ BOT_TEXTS = {
         "whatsapp": "🟢 WhatsApp",
         "home": "🏠 Hauptmenü",
         "admin": "🛠️ Admin-Bereich",
-        "learn_title": "🧭 <b>Islam lernen</b>\n\nWähle eine kurze Lektion:",
+        "learn_title": "🧭 <b>Islam lernen</b>\n\nWähle eine Lektion:",
         "language_title": "🌍 <b>Bot-Sprache wählen:</b>",
         "language_saved": "✅ Bot-Sprache geändert zu:",
         "unknown": "Nutze das Menü unten oder drücke /start.",
@@ -1597,50 +1599,8 @@ BOT_TEXTS = {
 }
 
 
-LEARN_TOPIC_LABELS = {
-    "what_is_islam": {"ar": "🧭 ما هو الإسلام؟", "en": "🧭 What is Islam?", "de": "🧭 Was ist Islam?"},
-    "pillars_islam": {"ar": "🕋 أركان الإسلام", "en": "🕋 Pillars of Islam", "de": "🕋 Säulen des Islam"},
-    "pillars_iman": {"ar": "✨ أركان الإيمان", "en": "✨ Pillars of Faith", "de": "✨ Säulen des Glaubens"},
-    "how_to_pray": {"ar": "🤲 كيف أصلي؟", "en": "🤲 How do I pray?", "de": "🤲 Wie bete ich?"},
-    "how_to_read_quran": {"ar": "📖 كيف أقرأ القرآن؟", "en": "📖 How do I read Quran?", "de": "📖 Wie lese ich den Quran?"},
-    "ramadan": {"ar": "🌙 ما هو رمضان؟", "en": "🌙 What is Ramadan?", "de": "🌙 Was ist Ramadan?"},
-}
-
-
-LEARN_ISLAM_CONTENT = {
-    "what_is_islam": {
-        "ar": "🧭 <b>ما هو الإسلام؟</b>\n\nالإسلام هو الاستسلام لله وحده، وعبادته، واتباع رسوله محمد ﷺ.\n\nيدعو الإسلام إلى التوحيد، والرحمة، والعدل، وحسن الخلق.",
-        "en": "🧭 <b>What is Islam?</b>\n\nIslam means submitting to Allah alone, worshipping Him, and following His Messenger Muhammad ﷺ.\n\nIslam calls to monotheism, mercy, justice, and good character.",
-        "de": "🧭 <b>Was ist Islam?</b>\n\nIslam bedeutet, sich Allah allein zu ergeben, Ihn anzubeten und Seinem Gesandten Muhammad ﷺ zu folgen.\n\nDer Islam ruft zu Monotheismus, Barmherzigkeit, Gerechtigkeit und gutem Charakter auf.",
-    },
-    "pillars_islam": {
-        "ar": "🕋 <b>أركان الإسلام</b>\n\n1. الشهادتان\n2. الصلاة\n3. الزكاة\n4. صوم رمضان\n5. حج البيت لمن استطاع إليه سبيلًا",
-        "en": "🕋 <b>The Pillars of Islam</b>\n\n1. The testimony of faith\n2. Prayer\n3. Zakat\n4. Fasting Ramadan\n5. Hajj for those who are able",
-        "de": "🕋 <b>Die Säulen des Islam</b>\n\n1. Das Glaubensbekenntnis\n2. Das Gebet\n3. Zakat\n4. Fasten im Ramadan\n5. Hajj für diejenigen, die dazu in der Lage sind",
-    },
-    "pillars_iman": {
-        "ar": "✨ <b>أركان الإيمان</b>\n\nالإيمان بالله، وملائكته، وكتبه، ورسله، واليوم الآخر، والقدر خيره وشره.",
-        "en": "✨ <b>The Pillars of Faith</b>\n\nBelief in Allah, His angels, His books, His messengers, the Last Day, and divine decree, its good and its bad.",
-        "de": "✨ <b>Die Säulen des Glaubens</b>\n\nDer Glaube an Allah, Seine Engel, Seine Bücher, Seine Gesandten, den Jüngsten Tag und die Vorherbestimmung, das Gute und das Schlechte davon.",
-    },
-    "how_to_pray": {
-        "ar": "🤲 <b>كيف أصلي؟</b>\n\nالصلاة عبادة عظيمة تبدأ بالطهارة والوضوء، ثم استقبال القبلة، ثم الصلاة كما علّم النبي ﷺ.\n\nابدأ بتعلّم الفاتحة، والقيام، والركوع، والسجود، والتشهد.",
-        "en": "🤲 <b>How do I pray?</b>\n\nPrayer begins with purification and wudu, then facing the qiblah, and praying as the Prophet ﷺ taught.\n\nStart by learning Al-Fatihah, standing, bowing, prostration, and tashahhud.",
-        "de": "🤲 <b>Wie bete ich?</b>\n\nDas Gebet beginnt mit Reinigung und Wudu, dann wendet man sich zur Qibla und betet, wie der Prophet ﷺ es lehrte.\n\nBeginne mit Al-Fatiha, Stehen, Verbeugung, Niederwerfung und Tashahhud.",
-    },
-    "how_to_read_quran": {
-        "ar": "📖 <b>كيف أقرأ القرآن؟</b>\n\nابدأ بسور قصيرة، واقرأ بطمأنينة، واستمع لقارئ متقن.\n\nالترجمة تساعد على فهم المعنى، لكن النص العربي هو الأصل.",
-        "en": "📖 <b>How do I read Quran?</b>\n\nStart with short surahs, read calmly, and listen to a skilled reciter.\n\nTranslation helps you understand the meaning, but the Arabic text is the original.",
-        "de": "📖 <b>Wie lese ich den Quran?</b>\n\nBeginne mit kurzen Suren, lies ruhig und höre einem guten Rezitator zu.\n\nÜbersetzungen helfen beim Verständnis, aber der arabische Text ist das Original.",
-    },
-    "ramadan": {
-        "ar": "🌙 <b>ما هو رمضان؟</b>\n\nرمضان شهر الصيام والقرآن والعبادة. يصوم المسلم من الفجر إلى المغرب تقربًا إلى الله.\n\nهو شهر الصبر، والرحمة، ومراجعة النفس.",
-        "en": "🌙 <b>What is Ramadan?</b>\n\nRamadan is the month of fasting, Quran, and worship. Muslims fast from dawn to sunset seeking closeness to Allah.\n\nIt is a month of patience, mercy, and self-reflection.",
-        "de": "🌙 <b>Was ist Ramadan?</b>\n\nRamadan ist der Monat des Fastens, des Qurans und der Anbetung. Muslime fasten von der Morgendämmerung bis zum Sonnenuntergang.\n\nEs ist ein Monat der Geduld, Barmherzigkeit und Selbstprüfung.",
-    },
-}
-
-
+# Learn Islam content is stored in learn_islam_data.py
+# It supports levels: summary, medium, detailed, sources.
 def t(user_id, key):
     lang = get_bot_lang(user_id)
     return BOT_TEXTS.get(lang, BOT_TEXTS["ar"]).get(key, BOT_TEXTS["ar"].get(key, key))
@@ -1750,17 +1710,152 @@ def bot_language_menu(user_id):
 
 
 def learn_topic_label(topic, lang):
-    labels = LEARN_TOPIC_LABELS.get(topic, {})
-    return labels.get(lang, labels.get("en", labels.get("ar", topic)))
+    topic_data = LEARN_ISLAM_TOPICS.get(topic, {})
+    labels = topic_data.get("title", {})
+    return labels.get(lang) or labels.get("en") or labels.get("ar") or topic
 
 
 def learn_islam_menu(user_id):
     lang = get_bot_lang(user_id)
     rows = []
-    for topic in LEARN_TOPIC_LABELS.keys():
-        rows.append([InlineKeyboardButton(learn_topic_label(topic, lang), callback_data=f"learn_{topic}")])
+
+    for topic in LEARN_ISLAM_TOPICS.keys():
+        rows.append([
+            InlineKeyboardButton(
+                learn_topic_label(topic, lang),
+                callback_data=f"learn_topic_{topic}"
+            )
+        ])
+
     rows.append([InlineKeyboardButton(t(user_id, "home"), callback_data="home")])
     return InlineKeyboardMarkup(rows)
+
+
+def learn_level_label(level, lang):
+    labels = {
+        "summary": {
+            "ar": "⚡ ملخص سريع",
+            "en": "⚡ Quick summary",
+            "de": "⚡ Kurze Zusammenfassung",
+            "fr": "⚡ Résumé rapide",
+            "es": "⚡ Resumen rápido",
+            "tr": "⚡ Kısa özet",
+            "id": "⚡ Ringkasan singkat",
+            "ur": "⚡ مختصر خلاصہ",
+            "hi": "⚡ संक्षिप्त सार",
+        },
+        "medium": {
+            "ar": "📖 شرح متوسط",
+            "en": "📖 Medium explanation",
+            "de": "📖 Mittlere Erklärung",
+            "fr": "📖 Explication moyenne",
+            "es": "📖 Explicación media",
+            "tr": "📖 Orta açıklama",
+            "id": "📖 Penjelasan sedang",
+            "ur": "📖 درمیانی شرح",
+            "hi": "📖 मध्यम व्याख्या",
+        },
+        "detailed": {
+            "ar": "📚 شرح مفصل",
+            "en": "📚 Detailed explanation",
+            "de": "📚 Ausführliche Erklärung",
+            "fr": "📚 Explication détaillée",
+            "es": "📚 Explicación detallada",
+            "tr": "📚 Detaylı açıklama",
+            "id": "📚 Penjelasan rinci",
+            "ur": "📚 تفصیلی شرح",
+            "hi": "📚 विस्तृत व्याख्या",
+        },
+        "sources": {
+            "ar": "📚 المصادر",
+            "en": "📚 Sources",
+            "de": "📚 Quellen",
+            "fr": "📚 Sources",
+            "es": "📚 Fuentes",
+            "tr": "📚 Kaynaklar",
+            "id": "📚 Sumber",
+            "ur": "📚 مصادر",
+            "hi": "📚 स्रोत",
+        },
+    }
+
+    return labels.get(level, {}).get(lang) or labels.get(level, {}).get("en") or level
+
+
+def learn_level_menu(user_id, topic):
+    lang = get_bot_lang(user_id)
+    topic_title = learn_topic_label(topic, lang)
+
+    rows = [
+        [InlineKeyboardButton(learn_level_label("summary", lang), callback_data=f"learn_page_{topic}_summary_0")],
+        [InlineKeyboardButton(learn_level_label("medium", lang), callback_data=f"learn_page_{topic}_medium_0")],
+        [InlineKeyboardButton(learn_level_label("detailed", lang), callback_data=f"learn_page_{topic}_detailed_0")],
+        [InlineKeyboardButton(learn_level_label("sources", lang), callback_data=f"learn_page_{topic}_sources_0")],
+        [InlineKeyboardButton("⬅️ Back", callback_data="learn_islam")],
+        [InlineKeyboardButton(t(user_id, "home"), callback_data="home")],
+    ]
+
+    return InlineKeyboardMarkup(rows)
+
+
+def get_learn_pages(topic, level, lang):
+    topic_data = LEARN_ISLAM_TOPICS.get(topic, {})
+    levels = topic_data.get("levels", {})
+    level_data = levels.get(level, {})
+
+    pages = (
+        level_data.get(lang)
+        or level_data.get("en")
+        or level_data.get("ar")
+        or []
+    )
+
+    if isinstance(pages, str):
+        pages = [pages]
+
+    return pages
+
+
+def render_learn_page(user_id, topic, level, page):
+    lang = get_bot_lang(user_id)
+    pages = get_learn_pages(topic, level, lang)
+
+    if not pages:
+        return "❌ Lesson not found.", learn_islam_menu(user_id)
+
+    if page < 0:
+        page = 0
+
+    if page >= len(pages):
+        page = len(pages) - 1
+
+    text = pages[page]
+
+    if len(pages) > 1:
+        text += f"\n\n<b>{page + 1}/{len(pages)}</b>"
+
+    buttons = []
+    nav = []
+
+    if page > 0:
+        nav.append(InlineKeyboardButton("⬅️", callback_data=f"learn_page_{topic}_{level}_{page - 1}"))
+
+    if page < len(pages) - 1:
+        nav.append(InlineKeyboardButton("➡️", callback_data=f"learn_page_{topic}_{level}_{page + 1}"))
+
+    if nav:
+        buttons.append(nav)
+
+    if level != "summary":
+        buttons.append([InlineKeyboardButton(learn_level_label("summary", lang), callback_data=f"learn_page_{topic}_summary_0")])
+
+    if level != "sources":
+        buttons.append([InlineKeyboardButton(learn_level_label("sources", lang), callback_data=f"learn_page_{topic}_sources_0")])
+
+    buttons.append([InlineKeyboardButton("⬅️ Back", callback_data=f"learn_topic_{topic}")])
+    buttons.append([InlineKeyboardButton(t(user_id, "home"), callback_data="home")])
+
+    return text, InlineKeyboardMarkup(buttons)
 
 
 def hadith_menu():
@@ -2615,17 +2710,31 @@ Pending ID: <code>{new_pending_id}</code>
     elif data == "learn_islam":
         await safe_edit(q, t(user_id, "learn_title"), learn_islam_menu(user_id))
 
-    elif data.startswith("learn_"):
-        topic = data.replace("learn_", "", 1)
-        lang = get_bot_lang(user_id)
-        content_pack = LEARN_ISLAM_CONTENT.get(topic)
+    elif data.startswith("learn_topic_"):
+        topic = data.replace("learn_topic_", "", 1)
+        topic_title = learn_topic_label(topic, get_bot_lang(user_id))
 
-        if not content_pack:
+        await safe_edit(
+            q,
+            f"{esc(topic_title)}\n\nاختر مستوى القراءة:",
+            learn_level_menu(user_id, topic)
+        )
+
+    elif data.startswith("learn_page_"):
+        parts = data.replace("learn_page_", "", 1).rsplit("_", 2)
+        if len(parts) != 3:
             await safe_edit(q, "❌ Lesson not found.", learn_islam_menu(user_id))
             return
 
-        content = content_pack.get(lang) or content_pack.get("en") or content_pack.get("ar")
-        await safe_edit(q, content, learn_islam_menu(user_id))
+        topic, level, page_text = parts
+
+        try:
+            page = int(page_text)
+        except Exception:
+            page = 0
+
+        text, markup = render_learn_page(user_id, topic, level, page)
+        await safe_edit(q, text, markup)
 
     elif data == "quran":
         try:
