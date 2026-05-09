@@ -67,10 +67,52 @@ DEFAULT_EVENING_ADHKAR_TIME = os.environ.get(
 )
 
 QURAN_API = "https://api.alquran.cloud/v1"
+QURAN_CDN_API = "https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1"
 HADEETH_API = "https://hadeethenc.com/api/v1/hadeeths/one/"
 LIST_API = "https://hadeethenc.com/api/v1/hadeeths/list/"
 
 DB = "bot.db"
+
+QURAN_TRANSLATIONS = {
+    "ar": {
+        "name": "العربية",
+        "edition": "ara-quranuthmani",
+    },
+    "en": {
+        "name": "English",
+        "edition": "eng-sahih",
+    },
+    "de": {
+        "name": "Deutsch",
+        "edition": "deu-aburida",
+    },
+    "fr": {
+        "name": "Français",
+        "edition": "fra-hamidullah",
+    },
+    "es": {
+        "name": "Español",
+        "edition": "spa-cortes",
+    },
+    "tr": {
+        "name": "Türkçe",
+        "edition": "tur-diyanet",
+    },
+    "id": {
+        "name": "Indonesia",
+        "edition": "ind-indonesianislam",
+    },
+    "ur": {
+        "name": "اردو",
+        "edition": "urd-jalandhry",
+    },
+    "hi": {
+        "name": "हिन्दी",
+        "edition": "hin-suhelfarooqkhan",
+    },
+}
+
+QURAN_ARABIC_EDITION = "ara-quranuthmani"
 
 
 # =====================================================
@@ -963,6 +1005,166 @@ def render_user_adhkar_stats(user_id, chat_id):
 
 
 # =====================================================
+# Quran API Helpers
+# =====================================================
+
+def quran_user_translation(user_id):
+    lang = get_bot_lang(user_id)
+
+    if lang not in QURAN_TRANSLATIONS:
+        lang = "en"
+
+    return QURAN_TRANSLATIONS[lang]
+
+
+def quran_cdn_get_ayah(surah_number, ayah_number, edition):
+    """
+    fawazahmed0/quran-api CDN format:
+    /editions/{edition}/{surah}/{ayah}.json
+    """
+    url = f"{QURAN_CDN_API}/editions/{edition}/{surah_number}/{ayah_number}.json"
+
+    response = requests.get(url, timeout=15)
+    response.raise_for_status()
+
+    data = response.json()
+
+    return {
+        "text": data.get("text", ""),
+        "surah_number": data.get("chapter", surah_number),
+        "ayah_number": data.get("verse", ayah_number),
+        "edition": edition,
+    }
+
+
+def quran_cdn_get_surah(surah_number, edition):
+    """
+    fawazahmed0/quran-api CDN format:
+    /editions/{edition}/{surah}.json
+    """
+    url = f"{QURAN_CDN_API}/editions/{edition}/{surah_number}.json"
+
+    response = requests.get(url, timeout=15)
+    response.raise_for_status()
+
+    return response.json()
+
+
+def get_quran_ayah_multilang(user_id=None, number=None):
+    """
+    Returns Arabic ayah + user-language translation using fawazahmed0/quran-api.
+    Falls back to alquran.cloud if CDN fails.
+    """
+    if number is None:
+        number = random.randint(1, 6236)
+
+    # Use alquran.cloud only to map global ayah number -> surah/ayah.
+    # The fawazahmed0 API uses surah/ayah paths.
+    try:
+        ref = get_ayah_by_number(number, "quran-uthmani")
+        surah_number = ref["surah_number"]
+        ayah_number = ref["ayah_number"]
+        surah_name = ref["surah_name"]
+        surah_english = ref["surah_english"]
+    except Exception:
+        surah_number = 1
+        ayah_number = 1
+        surah_name = "الفاتحة"
+        surah_english = "Al-Faatiha"
+
+    lang = "en"
+    if user_id is not None:
+        lang = get_bot_lang(user_id)
+
+    translation = QURAN_TRANSLATIONS.get(lang, QURAN_TRANSLATIONS["en"])
+
+    try:
+        ar = quran_cdn_get_ayah(surah_number, ayah_number, QURAN_ARABIC_EDITION)
+
+        if lang == "ar":
+            tr = None
+        else:
+            tr = quran_cdn_get_ayah(surah_number, ayah_number, translation["edition"])
+
+        return {
+            "arabic": ar["text"],
+            "translation": tr["text"] if tr else "",
+            "translation_name": translation["name"],
+            "translation_edition": translation["edition"],
+            "surah_number": surah_number,
+            "ayah_number": ayah_number,
+            "surah_name": surah_name,
+            "surah_english": surah_english,
+        }
+
+    except Exception:
+        # Fallback to old API editions
+        fallback_editions = {
+            "ar": "quran-uthmani",
+            "en": "en.sahih",
+            "de": "de.aburida",
+            "fr": "fr.hamidullah",
+            "es": "es.cortes",
+            "tr": "tr.diyanet",
+            "id": "id.indonesian",
+            "ur": "ur.jalandhry",
+        }
+
+        ar = get_ayah_by_number(number, "quran-uthmani")
+        tr = None
+
+        if lang != "ar":
+            edition = fallback_editions.get(lang, "en.sahih")
+            try:
+                tr = get_ayah_by_number(number, edition)
+            except Exception:
+                tr = get_ayah_by_number(number, "en.sahih")
+
+        return {
+            "arabic": ar["text"],
+            "translation": tr["text"] if tr else "",
+            "translation_name": translation["name"],
+            "translation_edition": translation["edition"],
+            "surah_number": ar["surah_number"],
+            "ayah_number": ar["ayah_number"],
+            "surah_name": ar["surah_name"],
+            "surah_english": ar["surah_english"],
+        }
+
+
+def quran_random_ayah_message(user_id):
+    ayah = get_quran_ayah_multilang(user_id=user_id)
+
+    ayah_ref = f"{ayah['surah_number']}:{ayah['ayah_number']}"
+
+    text = f"""📖 <b>آية من القرآن الكريم</b>
+
+🇸🇦 <b>العربية</b>
+
+{esc(ayah["arabic"])}
+
+"""
+
+    if ayah["translation"]:
+        text += f"""━━━━━━━━━━━━━━
+
+🌍 <b>{esc(ayah["translation_name"])}</b>
+
+{esc(ayah["translation"])}
+
+"""
+
+    text += f"""━━━━━━━━━━━━━━
+
+📖 <b>السورة:</b> {esc(ayah["surah_name"])} | {esc(ayah["surah_english"])}
+🔢 <b>الآية:</b> <code>{esc(ayah_ref)}</code>
+🌐 <b>API:</b> Quran API CDN
+"""
+
+    return text
+
+
+# =====================================================
 # Quran / Hadith APIs
 # =====================================================
 
@@ -1097,38 +1299,29 @@ def get_ayah_by_number(number, edition):
 
 def quran_channel_message():
     try:
-        number = random.randint(1, 6236)
+        ayah = get_quran_ayah_multilang(user_id=None)
 
-        ar = get_ayah_by_number(number, "quran-uthmani")
-        en = get_ayah_by_number(number, "en.sahih")
-        de = get_ayah_by_number(number, "de.aburida")
+        ayah_ref = f"{ayah['surah_number']}:{ayah['ayah_number']}"
 
-        ayah_ref = f"{ar['surah_number']}:{ar['ayah_number']}"
-
-        text = f"""📖 <b>آية اليوم | Ayah of the Day | Vers des Tages</b>
+        text = f"""📖 <b>آية اليوم | Ayah of the Day</b>
 
 ━━━━━━━━━━━━━━
 
 🇸🇦 <b>العربية</b>
 
-{esc(ar["text"])}
+{esc(ayah["arabic"])}
 
 ━━━━━━━━━━━━━━
 
-🇬🇧 <b>English</b>
+🌍 <b>English</b>
 
-{esc(en["text"])}
-
-━━━━━━━━━━━━━━
-
-🇩🇪 <b>Deutsch</b>
-
-{esc(de["text"])}
+{esc(ayah["translation"])}
 
 ━━━━━━━━━━━━━━
 
-📖 <b>السورة:</b> {esc(ar["surah_name"])} | {esc(en["surah_english"])}
+📖 <b>السورة:</b> {esc(ayah["surah_name"])} | {esc(ayah["surah_english"])}
 🔢 <b>الآية:</b> <code>{esc(ayah_ref)}</code>
+🌐 <b>Quran API:</b> fawazahmed0/quran-api
 
 🌍 {esc(CHANNEL_ID)}
 """
@@ -1484,6 +1677,14 @@ def bot_language_menu(user_id):
         [InlineKeyboardButton(t(user_id, "home"), callback_data="home")]
     ]
     return InlineKeyboardMarkup(rows)
+
+
+def quran_menu():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("📖 آية عشوائية", callback_data="quran_random_ayah")],
+        [InlineKeyboardButton("📌 آية اليوم", callback_data="quran_daily_ayah")],
+        [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")]
+    ])
 
 
 def hadith_menu():
@@ -2248,27 +2449,19 @@ Pending ID: <code>{new_pending_id}</code>
 
 
     elif data == "quran":
-        try:
-            res = requests.get(
-                f"{QURAN_API}/surah/1/quran-uthmani",
-                timeout=15
-            )
-            res.raise_for_status()
+        await safe_edit(
+            q,
+            "📖 <b>قسم القرآن باللغات</b>\n\nاختر:",
+            quran_menu()
+        )
 
-            ayat = res.json()["data"]["ayahs"]
-            text = "📖 <b>سورة الفاتحة</b>" + line()
+    elif data == "quran_random_ayah":
+        text = quran_random_ayah_message(user_id)
+        await safe_edit(q, text, quran_menu())
 
-            for a in ayat:
-                text += f"{esc(a['text'])}\n"
-
-            await safe_edit(q, text, back())
-
-        except Exception as e:
-            await safe_edit(
-                q,
-                f"❌ خطأ في جلب القرآن:\n<code>{esc(e)}</code>",
-                back()
-            )
+    elif data == "quran_daily_ayah":
+        text, _ = quran_channel_message()
+        await safe_edit(q, text, quran_menu())
 
     elif data == "hadith":
         await safe_edit(
@@ -2703,32 +2896,12 @@ Pending ID: <code>{new_pending_id}</code>
 # Reply Keyboard Main Menu
 # =====================================================
 
-async def send_fatiha_from_menu(update: Update):
-    try:
-        res = requests.get(
-            f"{QURAN_API}/surah/1/quran-uthmani",
-            timeout=15
-        )
-        res.raise_for_status()
-
-        ayat = res.json()["data"]["ayahs"]
-        text = "📖 <b>سورة الفاتحة</b>" + line()
-
-        for a in ayat:
-            text += f"{esc(a['text'])}\n"
-
-        await update.message.reply_text(
-            text,
-            reply_markup=back(),
-            parse_mode="HTML"
-        )
-
-    except Exception as e:
-        await update.message.reply_text(
-            f"❌ خطأ في جلب القرآن:\n<code>{esc(e)}</code>",
-            reply_markup=back(),
-            parse_mode="HTML"
-        )
+async def send_quran_menu_from_keyboard(update: Update):
+    await update.message.reply_text(
+        "📖 <b>قسم القرآن باللغات</b>\n\nاختر:",
+        reply_markup=quran_menu(),
+        parse_mode="HTML"
+    )
 
 
 async def send_about_from_menu(update: Update):
@@ -2777,7 +2950,7 @@ async def handle_reply_keyboard_menu(update: Update, context: ContextTypes.DEFAU
         return True
 
     if is_menu_text(text, "quran"):
-        await send_fatiha_from_menu(update)
+        await send_quran_menu_from_keyboard(update)
         return True
 
     if is_menu_text(text, "hadith"):
