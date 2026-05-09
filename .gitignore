@@ -1,3 +1,5 @@
-.env
-bot.db
+pdfs/
+*.pdf
 __pycache__/
+*.pyc
+.env

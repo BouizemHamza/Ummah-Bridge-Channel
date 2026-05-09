@@ -38,6 +38,7 @@ from adhkar_data import (
 )
 
 from learn_islam_data import LEARN_ISLAM_TOPICS
+from library_search import search_library, format_search_results
 
 
 # =====================================================
@@ -1433,6 +1434,7 @@ BOT_TEXTS = {
         "adhkar": "🤲 الأذكار",
         "quiz": "🧠 سؤال إسلامي",
         "learn": "🧭 تعلم الإسلام",
+        "library": "📚 المكتبة الإسلامية",
         "bot_language": "🌍 لغة البوت",
         "about": "ℹ️ عن المشروع",
         "telegram": "🌐 Telegram",
@@ -1452,6 +1454,7 @@ BOT_TEXTS = {
         "adhkar": "🤲 Adhkar",
         "quiz": "🧠 Islamic Quiz",
         "learn": "🧭 Learn Islam",
+        "library": "📚 Islamic Library",
         "bot_language": "🌍 Bot Language",
         "about": "ℹ️ About",
         "telegram": "🌐 Telegram",
@@ -1471,6 +1474,7 @@ BOT_TEXTS = {
         "adhkar": "🤲 Adhkar",
         "quiz": "🧠 Islamisches Quiz",
         "learn": "🧭 Islam lernen",
+        "library": "📚 Islamische Bibliothek",
         "bot_language": "🌍 Bot-Sprache",
         "about": "ℹ️ Über das Projekt",
         "telegram": "🌐 Telegram",
@@ -1490,6 +1494,7 @@ BOT_TEXTS = {
         "adhkar": "🤲 Adhkar",
         "quiz": "🧠 Quiz islamique",
         "learn": "🧭 Apprendre l’islam",
+        "library": "📚 Bibliothèque islamique",
         "bot_language": "🌍 Langue du bot",
         "about": "ℹ️ À propos",
         "telegram": "🌐 Telegram",
@@ -1509,6 +1514,7 @@ BOT_TEXTS = {
         "adhkar": "🤲 Adhkar",
         "quiz": "🧠 Quiz islámico",
         "learn": "🧭 Aprender Islam",
+        "library": "📚 Biblioteca islámica",
         "bot_language": "🌍 Idioma del bot",
         "about": "ℹ️ Acerca de",
         "telegram": "🌐 Telegram",
@@ -1528,6 +1534,7 @@ BOT_TEXTS = {
         "adhkar": "🤲 Zikirler",
         "quiz": "🧠 İslami soru",
         "learn": "🧭 İslamı öğren",
+        "library": "📚 İslami Kütüphane",
         "bot_language": "🌍 Bot dili",
         "about": "ℹ️ Hakkında",
         "telegram": "🌐 Telegram",
@@ -1547,6 +1554,7 @@ BOT_TEXTS = {
         "adhkar": "🤲 Adhkar",
         "quiz": "🧠 Kuis Islam",
         "learn": "🧭 Belajar Islam",
+        "library": "📚 Perpustakaan Islam",
         "bot_language": "🌍 Bahasa bot",
         "about": "ℹ️ Tentang",
         "telegram": "🌐 Telegram",
@@ -1566,6 +1574,7 @@ BOT_TEXTS = {
         "adhkar": "🤲 اذکار",
         "quiz": "🧠 اسلامی سوال",
         "learn": "🧭 اسلام سیکھیں",
+        "library": "📚 اسلامی لائبریری",
         "bot_language": "🌍 بوٹ کی زبان",
         "about": "ℹ️ تعارف",
         "telegram": "🌐 Telegram",
@@ -1585,6 +1594,7 @@ BOT_TEXTS = {
         "adhkar": "🤲 अज़कार",
         "quiz": "🧠 इस्लामी प्रश्न",
         "learn": "🧭 इस्लाम सीखें",
+        "library": "📚 इस्लामी पुस्तकालय",
         "bot_language": "🌍 बॉट भाषा",
         "about": "ℹ️ परिचय",
         "telegram": "🌐 Telegram",
@@ -1625,8 +1635,8 @@ def reply_main_menu(user_id):
     rows = [
         [KeyboardButton(t(user_id, "quran")), KeyboardButton(t(user_id, "hadith"))],
         [KeyboardButton(t(user_id, "adhkar")), KeyboardButton(t(user_id, "quiz"))],
-        [KeyboardButton(t(user_id, "learn")), KeyboardButton(t(user_id, "bot_language"))],
-        [KeyboardButton(t(user_id, "about"))],
+        [KeyboardButton(t(user_id, "learn")), KeyboardButton(t(user_id, "library"))],
+        [KeyboardButton(t(user_id, "bot_language")), KeyboardButton(t(user_id, "about"))],
         [KeyboardButton(t(user_id, "telegram")), KeyboardButton(t(user_id, "whatsapp"))],
         [KeyboardButton(t(user_id, "home"))],
     ]
@@ -1669,6 +1679,7 @@ def main_menu(user_id):
         [InlineKeyboardButton(t(user_id, "hadith"), callback_data="hadith")],
         [InlineKeyboardButton(t(user_id, "adhkar"), callback_data="adhkar_menu")],
         [InlineKeyboardButton(t(user_id, "learn"), callback_data="learn_islam")],
+        [InlineKeyboardButton(t(user_id, "library"), callback_data="library_menu")],
         [InlineKeyboardButton(t(user_id, "bot_language"), callback_data="bot_language_menu")],
         [InlineKeyboardButton(t(user_id, "about"), callback_data="about")],
         [InlineKeyboardButton(t(user_id, "telegram"), url="https://t.me/UMMAHBRIDGE")]
@@ -1856,6 +1867,49 @@ def render_learn_page(user_id, topic, level, page):
     buttons.append([InlineKeyboardButton(t(user_id, "home"), callback_data="home")])
 
     return text, InlineKeyboardMarkup(buttons)
+
+
+
+def library_menu(user_id):
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🔎 ابحث في المكتبة", callback_data="library_search")],
+        [InlineKeyboardButton("⚠️ تنبيه مهم", callback_data="library_notice")],
+        [InlineKeyboardButton(t(user_id, "home"), callback_data="home")]
+    ])
+
+
+def library_intro_text():
+    return """📚 <b>المكتبة الإسلامية</b>
+
+ابحث داخل المصادر الموجودة في قاعدة البيانات.
+
+اكتب كلمة أو موضوعًا مثل:
+• بدر
+• مكة
+• قريش
+• الهجرة
+• أحد
+
+⚠️ <b>تنبيه:</b>
+هذه الأداة تعليمية للبحث في مصادر مختارة، وليست للإفتاء.
+للمسائل الفقهية الخاصة يرجى الرجوع إلى أهل العلم.
+"""
+
+
+def library_notice_text():
+    return """⚠️ <b>تنبيه مهم</b>
+
+هذه المكتبة مخصصة للقراءة والبحث في كتب ومصادر مختارة مثل السيرة والقصص والتاريخ.
+
+ليست هذه الأداة مخصصة للفتوى أو الأحكام الخاصة مثل:
+• الطلاق
+• المواريث
+• الحلال والحرام في الحالات الشخصية
+• المعاملات المالية الخاصة
+
+للمسائل الفقهية الخاصة يرجى الرجوع إلى أهل العلم الموثوقين.
+"""
+
 
 
 def hadith_menu():
@@ -2736,6 +2790,23 @@ Pending ID: <code>{new_pending_id}</code>
         text, markup = render_learn_page(user_id, topic, level, page)
         await safe_edit(q, text, markup)
 
+    elif data == "library_menu":
+        await safe_edit(q, library_intro_text(), library_menu(user_id))
+
+    elif data == "library_notice":
+        await safe_edit(q, library_notice_text(), library_menu(user_id))
+
+    elif data == "library_search":
+        context.user_data["waiting_library_search"] = True
+        await safe_edit(
+            q,
+            "🔎 <b>اكتب الآن ما تريد البحث عنه في المكتبة الإسلامية.</b>\n\nمثال: <code>بدر</code> أو <code>مكة</code> أو <code>قريش</code>",
+            InlineKeyboardMarkup([
+                [InlineKeyboardButton("⬅️ رجوع للمكتبة", callback_data="library_menu")],
+                [InlineKeyboardButton(t(user_id, "home"), callback_data="home")]
+            ])
+        )
+
     elif data == "quran":
         try:
             res = requests.get(
@@ -3271,6 +3342,7 @@ async def send_about_from_menu(update: Update):
 🤲 دعاء اليوم.
 🧠 سؤال إسلامي تفاعلي.
 🧭 تعلم الإسلام بلغات متعددة.
+📚 مكتبة إسلامية للبحث في المصادر.
 
 🤲 يحتوي البوت على أذكار الصباح والمساء بلغات متعددة مع عداد تكرار.
 🔥 ويحتوي على إنجاز يومي وسلسلة أيام للأذكار.
@@ -3342,6 +3414,14 @@ async def handle_reply_keyboard_menu(update: Update, context: ContextTypes.DEFAU
         )
         return True
 
+    if is_menu_text(text, "library"):
+        await update.message.reply_text(
+            library_intro_text(),
+            reply_markup=library_menu(user_id),
+            parse_mode="HTML"
+        )
+        return True
+
     if is_menu_text(text, "bot_language"):
         await update.message.reply_text(
             t(user_id, "language_title"),
@@ -3404,6 +3484,29 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     add_user(user_id)
     ensure_adhkar_reminder_row(user_id, chat_id)
+
+    if context.user_data.get("waiting_library_search"):
+        context.user_data["waiting_library_search"] = False
+        query = update.message.text.strip()
+
+        if len(query) < 2:
+            await update.message.reply_text(
+                "❌ اكتب كلمة أو موضوعًا أوضح للبحث.",
+                reply_markup=library_menu(user_id),
+                parse_mode="HTML"
+            )
+            return
+
+        results = search_library(query, limit=5)
+        answer = format_search_results(query, results)
+
+        await update.message.reply_text(
+            answer,
+            reply_markup=library_menu(user_id),
+            parse_mode="HTML",
+            disable_web_page_preview=True
+        )
+        return
 
     if context.user_data.get("waiting_adhkar_custom_time"):
         kind = context.user_data.get("waiting_adhkar_custom_time")
