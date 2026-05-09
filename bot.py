@@ -38,7 +38,6 @@ from adhkar_data import (
 )
 
 from learn_islam_data import LEARN_ISLAM_TOPICS
-from library_search import search_library, format_search_results
 
 
 # =====================================================
@@ -73,6 +72,7 @@ HADEETH_API = "https://hadeethenc.com/api/v1/hadeeths/one/"
 LIST_API = "https://hadeethenc.com/api/v1/hadeeths/list/"
 
 DB = "bot.db"
+LIBRARY_DB = os.environ.get("ISLAMIC_LIBRARY_DB", "islamic_library.db")
 
 
 # =====================================================
@@ -166,6 +166,180 @@ def parse_schedule_time(value, fallback="09:00"):
             minute=int(fallback_minute),
             second=0
         )
+
+
+# =====================================================
+# Islamic Library Search
+# =====================================================
+
+def clean_snippet(text, limit=650):
+    text = " ".join(str(text or "").split())
+    if len(text) <= limit:
+        return text
+    return text[:limit].rstrip() + "..."
+
+
+def resolve_library_db_path():
+    candidates = [
+        LIBRARY_DB,
+        os.path.join(os.getcwd(), LIBRARY_DB),
+        os.path.join(os.getcwd(), "islamic_library.db"),
+        os.path.join("/app", "islamic_library.db"),
+    ]
+
+    for candidate in candidates:
+        if candidate and os.path.exists(candidate):
+            return candidate
+
+    return LIBRARY_DB
+
+
+def search_islamic_library(query, limit=3):
+    """
+    Searches a local SQLite Islamic library database.
+
+    Supported schemas:
+    1) FTS table named: library_fts, chunks_fts, islamic_library_fts
+    2) Normal tables named: library_chunks, chunks, islamic_library, documents, pages
+    """
+
+    query = str(query or "").strip()
+    if not query:
+        return []
+
+    db_path = resolve_library_db_path()
+
+    if not os.path.exists(db_path):
+        return []
+
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+
+    c.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    tables = [row["name"] for row in c.fetchall()]
+
+    results = []
+
+    fts_candidates = [
+        "library_fts",
+        "chunks_fts",
+        "islamic_library_fts",
+        "documents_fts",
+    ]
+
+    for table in fts_candidates:
+        if table not in tables:
+            continue
+
+        try:
+            c.execute(f"PRAGMA table_info({table})")
+            cols = [row["name"] for row in c.fetchall()]
+
+            text_col = None
+            for candidate in ["text", "content", "chunk", "text_chunk", "body"]:
+                if candidate in cols:
+                    text_col = candidate
+                    break
+
+            title_col = "title" if "title" in cols else ("book_title" if "book_title" in cols else None)
+            book_col = "book" if "book" in cols else ("source" if "source" in cols else ("book_title" if "book_title" in cols else None))
+            page_col = "page" if "page" in cols else ("page_number" if "page_number" in cols else None)
+
+            if not text_col:
+                continue
+
+            select_cols = [
+                f"{title_col} AS title" if title_col else "'' AS title",
+                f"{book_col} AS book" if book_col else "'' AS book",
+                f"{page_col} AS page" if page_col else "'' AS page",
+                f"{text_col} AS snippet",
+            ]
+
+            sql = f"""
+                SELECT {", ".join(select_cols)}
+                FROM {table}
+                WHERE {table} MATCH ?
+                LIMIT ?
+            """
+
+            for row in c.execute(sql, (query, limit)):
+                results.append({
+                    "title": row["title"] or row["book"] or "نتيجة من المكتبة",
+                    "book": row["book"] or row["title"] or "غير محدد",
+                    "page": row["page"] or "غير محددة",
+                    "snippet": clean_snippet(row["snippet"]),
+                })
+
+            if results:
+                conn.close()
+                return results[:limit]
+
+        except Exception:
+            pass
+
+    normal_candidates = [
+        "library_chunks",
+        "chunks",
+        "islamic_library",
+        "documents",
+        "pages",
+    ]
+
+    for table in normal_candidates:
+        if table not in tables:
+            continue
+
+        try:
+            c.execute(f"PRAGMA table_info({table})")
+            cols = [row["name"] for row in c.fetchall()]
+
+            text_col = None
+            for candidate in ["text", "content", "chunk", "text_chunk", "body"]:
+                if candidate in cols:
+                    text_col = candidate
+                    break
+
+            title_col = "title" if "title" in cols else ("book_title" if "book_title" in cols else None)
+            book_col = "book" if "book" in cols else ("source" if "source" in cols else ("book_title" if "book_title" in cols else None))
+            page_col = "page" if "page" in cols else ("page_number" if "page_number" in cols else None)
+
+            if not text_col:
+                continue
+
+            select_cols = [
+                f"{title_col} AS title" if title_col else "'' AS title",
+                f"{book_col} AS book" if book_col else "'' AS book",
+                f"{page_col} AS page" if page_col else "'' AS page",
+                f"{text_col} AS snippet",
+            ]
+
+            like_query = f"%{query}%"
+
+            sql = f"""
+                SELECT {", ".join(select_cols)}
+                FROM {table}
+                WHERE {text_col} LIKE ?
+                LIMIT ?
+            """
+
+            for row in c.execute(sql, (like_query, limit)):
+                results.append({
+                    "title": row["title"] or row["book"] or "نتيجة من المكتبة",
+                    "book": row["book"] or row["title"] or "غير محدد",
+                    "page": row["page"] or "غير محددة",
+                    "snippet": clean_snippet(row["snippet"]),
+                })
+
+            if results:
+                conn.close()
+                return results[:limit]
+
+        except Exception:
+            pass
+
+    conn.close()
+    return results[:limit]
 
 
 # =====================================================
@@ -1434,7 +1608,6 @@ BOT_TEXTS = {
         "adhkar": "🤲 الأذكار",
         "quiz": "🧠 سؤال إسلامي",
         "learn": "🧭 تعلم الإسلام",
-        "library": "📚 المكتبة الإسلامية",
         "bot_language": "🌍 لغة البوت",
         "about": "ℹ️ عن المشروع",
         "telegram": "🌐 Telegram",
@@ -1454,7 +1627,6 @@ BOT_TEXTS = {
         "adhkar": "🤲 Adhkar",
         "quiz": "🧠 Islamic Quiz",
         "learn": "🧭 Learn Islam",
-        "library": "📚 Islamic Library",
         "bot_language": "🌍 Bot Language",
         "about": "ℹ️ About",
         "telegram": "🌐 Telegram",
@@ -1474,7 +1646,6 @@ BOT_TEXTS = {
         "adhkar": "🤲 Adhkar",
         "quiz": "🧠 Islamisches Quiz",
         "learn": "🧭 Islam lernen",
-        "library": "📚 Islamische Bibliothek",
         "bot_language": "🌍 Bot-Sprache",
         "about": "ℹ️ Über das Projekt",
         "telegram": "🌐 Telegram",
@@ -1494,7 +1665,6 @@ BOT_TEXTS = {
         "adhkar": "🤲 Adhkar",
         "quiz": "🧠 Quiz islamique",
         "learn": "🧭 Apprendre l’islam",
-        "library": "📚 Bibliothèque islamique",
         "bot_language": "🌍 Langue du bot",
         "about": "ℹ️ À propos",
         "telegram": "🌐 Telegram",
@@ -1514,7 +1684,6 @@ BOT_TEXTS = {
         "adhkar": "🤲 Adhkar",
         "quiz": "🧠 Quiz islámico",
         "learn": "🧭 Aprender Islam",
-        "library": "📚 Biblioteca islámica",
         "bot_language": "🌍 Idioma del bot",
         "about": "ℹ️ Acerca de",
         "telegram": "🌐 Telegram",
@@ -1534,7 +1703,6 @@ BOT_TEXTS = {
         "adhkar": "🤲 Zikirler",
         "quiz": "🧠 İslami soru",
         "learn": "🧭 İslamı öğren",
-        "library": "📚 İslami Kütüphane",
         "bot_language": "🌍 Bot dili",
         "about": "ℹ️ Hakkında",
         "telegram": "🌐 Telegram",
@@ -1554,7 +1722,6 @@ BOT_TEXTS = {
         "adhkar": "🤲 Adhkar",
         "quiz": "🧠 Kuis Islam",
         "learn": "🧭 Belajar Islam",
-        "library": "📚 Perpustakaan Islam",
         "bot_language": "🌍 Bahasa bot",
         "about": "ℹ️ Tentang",
         "telegram": "🌐 Telegram",
@@ -1574,7 +1741,6 @@ BOT_TEXTS = {
         "adhkar": "🤲 اذکار",
         "quiz": "🧠 اسلامی سوال",
         "learn": "🧭 اسلام سیکھیں",
-        "library": "📚 اسلامی لائبریری",
         "bot_language": "🌍 بوٹ کی زبان",
         "about": "ℹ️ تعارف",
         "telegram": "🌐 Telegram",
@@ -1594,7 +1760,6 @@ BOT_TEXTS = {
         "adhkar": "🤲 अज़कार",
         "quiz": "🧠 इस्लामी प्रश्न",
         "learn": "🧭 इस्लाम सीखें",
-        "library": "📚 इस्लामी पुस्तकालय",
         "bot_language": "🌍 बॉट भाषा",
         "about": "ℹ️ परिचय",
         "telegram": "🌐 Telegram",
@@ -1635,7 +1800,7 @@ def reply_main_menu(user_id):
     rows = [
         [KeyboardButton(t(user_id, "quran")), KeyboardButton(t(user_id, "hadith"))],
         [KeyboardButton(t(user_id, "adhkar")), KeyboardButton(t(user_id, "quiz"))],
-        [KeyboardButton(t(user_id, "learn")), KeyboardButton(t(user_id, "library"))],
+        [KeyboardButton("📚 المكتبة الإسلامية"), KeyboardButton(t(user_id, "learn"))],
         [KeyboardButton(t(user_id, "bot_language")), KeyboardButton(t(user_id, "about"))],
         [KeyboardButton(t(user_id, "telegram")), KeyboardButton(t(user_id, "whatsapp"))],
         [KeyboardButton(t(user_id, "home"))],
@@ -1678,8 +1843,8 @@ def main_menu(user_id):
         [InlineKeyboardButton(t(user_id, "quran"), callback_data="quran")],
         [InlineKeyboardButton(t(user_id, "hadith"), callback_data="hadith")],
         [InlineKeyboardButton(t(user_id, "adhkar"), callback_data="adhkar_menu")],
+        [InlineKeyboardButton("📚 المكتبة الإسلامية", callback_data="islamic_library")],
         [InlineKeyboardButton(t(user_id, "learn"), callback_data="learn_islam")],
-        [InlineKeyboardButton(t(user_id, "library"), callback_data="library_menu")],
         [InlineKeyboardButton(t(user_id, "bot_language"), callback_data="bot_language_menu")],
         [InlineKeyboardButton(t(user_id, "about"), callback_data="about")],
         [InlineKeyboardButton(t(user_id, "telegram"), url="https://t.me/UMMAHBRIDGE")]
@@ -1692,6 +1857,18 @@ def main_menu(user_id):
         buttons.append([InlineKeyboardButton(t(user_id, "admin"), callback_data="admin")])
 
     return InlineKeyboardMarkup(buttons)
+
+
+def islamic_library_menu():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🔎 بحث في المكتبة", callback_data="library_search")],
+        [InlineKeyboardButton("📘 السيرة النبوية", callback_data="library_category_seerah")],
+        [InlineKeyboardButton("⚔️ الغزوات", callback_data="library_category_battles")],
+        [InlineKeyboardButton("🕋 قصص الأنبياء", callback_data="library_category_prophets")],
+        [InlineKeyboardButton("🌟 الصحابة", callback_data="library_category_sahaba")],
+        [InlineKeyboardButton("🌿 التابعون", callback_data="library_category_tabiun")],
+        [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")]
+    ])
 
 
 def bot_language_menu(user_id):
@@ -1867,49 +2044,6 @@ def render_learn_page(user_id, topic, level, page):
     buttons.append([InlineKeyboardButton(t(user_id, "home"), callback_data="home")])
 
     return text, InlineKeyboardMarkup(buttons)
-
-
-
-def library_menu(user_id):
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🔎 ابحث في المكتبة", callback_data="library_search")],
-        [InlineKeyboardButton("⚠️ تنبيه مهم", callback_data="library_notice")],
-        [InlineKeyboardButton(t(user_id, "home"), callback_data="home")]
-    ])
-
-
-def library_intro_text():
-    return """📚 <b>المكتبة الإسلامية</b>
-
-ابحث داخل المصادر الموجودة في قاعدة البيانات.
-
-اكتب كلمة أو موضوعًا مثل:
-• بدر
-• مكة
-• قريش
-• الهجرة
-• أحد
-
-⚠️ <b>تنبيه:</b>
-هذه الأداة تعليمية للبحث في مصادر مختارة، وليست للإفتاء.
-للمسائل الفقهية الخاصة يرجى الرجوع إلى أهل العلم.
-"""
-
-
-def library_notice_text():
-    return """⚠️ <b>تنبيه مهم</b>
-
-هذه المكتبة مخصصة للقراءة والبحث في كتب ومصادر مختارة مثل السيرة والقصص والتاريخ.
-
-ليست هذه الأداة مخصصة للفتوى أو الأحكام الخاصة مثل:
-• الطلاق
-• المواريث
-• الحلال والحرام في الحالات الشخصية
-• المعاملات المالية الخاصة
-
-للمسائل الفقهية الخاصة يرجى الرجوع إلى أهل العلم الموثوقين.
-"""
-
 
 
 def hadith_menu():
@@ -2790,21 +2924,46 @@ Pending ID: <code>{new_pending_id}</code>
         text, markup = render_learn_page(user_id, topic, level, page)
         await safe_edit(q, text, markup)
 
-    elif data == "library_menu":
-        await safe_edit(q, library_intro_text(), library_menu(user_id))
+    elif data == "islamic_library":
+        await safe_edit(
+            q,
+            """📚 <b>المكتبة الإسلامية</b>
 
-    elif data == "library_notice":
-        await safe_edit(q, library_notice_text(), library_menu(user_id))
+ابحث في مصادر مختارة مثل السيرة، الغزوات، قصص الأنبياء، الصحابة والتابعين.
+
+⚠️ هذه أداة تعليمية وليست للإفتاء.""",
+            islamic_library_menu()
+        )
 
     elif data == "library_search":
         context.user_data["waiting_library_search"] = True
+
         await safe_edit(
             q,
-            "🔎 <b>اكتب الآن ما تريد البحث عنه في المكتبة الإسلامية.</b>\n\nمثال: <code>بدر</code> أو <code>مكة</code> أو <code>قريش</code>",
+            """🔎 <b>اكتب الآن ما تريد البحث عنه في المكتبة الإسلامية.</b>
+
+مثال:
+<code>بدر</code>
+<code>معركة بدر</code>
+<code>مكة</code>
+<code>قريش</code>
+""",
             InlineKeyboardMarkup([
-                [InlineKeyboardButton("⬅️ رجوع للمكتبة", callback_data="library_menu")],
-                [InlineKeyboardButton(t(user_id, "home"), callback_data="home")]
+                [InlineKeyboardButton("⬅️ رجوع للمكتبة", callback_data="islamic_library")],
+                [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")]
             ])
+        )
+
+    elif data.startswith("library_category_"):
+        await safe_edit(
+            q,
+            """📚 <b>هذا القسم سيعرض موضوعات جاهزة قريبًا.</b>
+
+حاليًا استخدم زر:
+🔎 بحث في المكتبة
+
+مثال: بدر، مكة، قريش، الهجرة.""",
+            islamic_library_menu()
         )
 
     elif data == "quran":
@@ -3342,7 +3501,6 @@ async def send_about_from_menu(update: Update):
 🤲 دعاء اليوم.
 🧠 سؤال إسلامي تفاعلي.
 🧭 تعلم الإسلام بلغات متعددة.
-📚 مكتبة إسلامية للبحث في المصادر.
 
 🤲 يحتوي البوت على أذكار الصباح والمساء بلغات متعددة مع عداد تكرار.
 🔥 ويحتوي على إنجاز يومي وسلسلة أيام للأذكار.
@@ -3414,14 +3572,6 @@ async def handle_reply_keyboard_menu(update: Update, context: ContextTypes.DEFAU
         )
         return True
 
-    if is_menu_text(text, "library"):
-        await update.message.reply_text(
-            library_intro_text(),
-            reply_markup=library_menu(user_id),
-            parse_mode="HTML"
-        )
-        return True
-
     if is_menu_text(text, "bot_language"):
         await update.message.reply_text(
             t(user_id, "language_title"),
@@ -3458,6 +3608,18 @@ async def handle_reply_keyboard_menu(update: Update, context: ContextTypes.DEFAU
             await update.message.reply_text("❌ رابط قناة WhatsApp غير مضاف بعد.")
         return True
 
+    if text == "📚 المكتبة الإسلامية":
+        await update.message.reply_text(
+            """📚 <b>المكتبة الإسلامية</b>
+
+ابحث في مصادر مختارة مثل السيرة، الغزوات، قصص الأنبياء، الصحابة والتابعين.
+
+⚠️ هذه أداة تعليمية وليست للإفتاء.""",
+            reply_markup=islamic_library_menu(),
+            parse_mode="HTML"
+        )
+        return True
+
     if is_menu_text(text, "admin"):
         if not is_admin(user_id):
             await update.message.reply_text("❌ هذا القسم خاص بالمشرف فقط.")
@@ -3486,23 +3648,90 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ensure_adhkar_reminder_row(user_id, chat_id)
 
     if context.user_data.get("waiting_library_search"):
-        context.user_data["waiting_library_search"] = False
         query = update.message.text.strip()
 
         if len(query) < 2:
             await update.message.reply_text(
-                "❌ اكتب كلمة أو موضوعًا أوضح للبحث.",
-                reply_markup=library_menu(user_id),
+                """❌ اكتب كلمة بحث أو عبارة واضحة.
+
+مثال:
+<code>بدر</code>
+<code>معركة بدر</code>
+<code>مكة</code>
+<code>قريش</code>
+""",
                 parse_mode="HTML"
             )
             return
 
-        results = search_library(query, limit=5)
-        answer = format_search_results(query, results)
+        context.user_data["waiting_library_search"] = False
+
+        try:
+            results = search_islamic_library(query, limit=3)
+        except Exception as e:
+            await update.message.reply_text(
+                f"""❌ حدث خطأ أثناء البحث في المكتبة.
+
+<code>{esc(e)}</code>
+""",
+                reply_markup=islamic_library_menu(),
+                parse_mode="HTML"
+            )
+            return
+
+        if not results:
+            await update.message.reply_text(
+                f"""🔎 <b>نتيجة البحث</b>
+
+لم أجد نتائج واضحة عن:
+<code>{esc(query)}</code>
+
+تأكد أن ملف قاعدة البيانات موجود باسم:
+<code>{esc(LIBRARY_DB)}</code>
+
+وجرّب كلمة أخرى مثل:
+<code>بدر</code>
+<code>أحد</code>
+<code>الهجرة</code>
+<code>مكة</code>
+<code>قريش</code>
+
+⚠️ هذه الأداة تعليمية وليست للإفتاء.
+""",
+                reply_markup=islamic_library_menu(),
+                parse_mode="HTML"
+            )
+            return
+
+        text = f"""🔎 <b>نتائج البحث في المكتبة الإسلامية</b>
+
+بحثت عن:
+<code>{esc(query)}</code>
+
+"""
+
+        for i, item in enumerate(results, 1):
+            title = item.get("title", "بدون عنوان")
+            snippet = item.get("snippet", "")
+            book = item.get("book", "غير محدد")
+            page = item.get("page", "غير محددة")
+
+            text += f"""<b>{i}. {esc(title)}</b>
+
+{esc(snippet)}
+
+📚 <b>المصدر:</b> {esc(book)}
+📄 <b>الصفحة:</b> {esc(page)}
+
+━━━━━━━━━━━━━━
+
+"""
+
+        text += "⚠️ هذه نتائج تعليمية من مصادر مختارة وليست فتوى."
 
         await update.message.reply_text(
-            answer,
-            reply_markup=library_menu(user_id),
+            text,
+            reply_markup=islamic_library_menu(),
             parse_mode="HTML",
             disable_web_page_preview=True
         )
@@ -3657,6 +3886,7 @@ def main():
     print("Adhkar completion + streak system: enabled")
     print("Auto channel publishing approval: enabled")
     print("Manual Islamic quiz: enabled")
+    print(f"Islamic library DB: {LIBRARY_DB}")
 
     app.run_polling()
 
