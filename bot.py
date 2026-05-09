@@ -172,11 +172,68 @@ def parse_schedule_time(value, fallback="09:00"):
 # Islamic Library Search
 # =====================================================
 
+def normalize_arabic(text):
+    text = str(text or "")
+    replacements = {
+        "أ": "ا",
+        "إ": "ا",
+        "آ": "ا",
+        "ى": "ي",
+        "ة": "ه",
+        "ؤ": "و",
+        "ئ": "ي",
+        "ٱ": "ا",
+    }
+
+    for src_char, dst_char in replacements.items():
+        text = text.replace(src_char, dst_char)
+
+    # Remove Arabic diacritics and tatweel
+    text = re.sub(r"[\u064B-\u065F\u0670ـ]", "", text)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip().lower()
+
+
 def clean_snippet(text, limit=650):
     text = " ".join(str(text or "").split())
     if len(text) <= limit:
         return text
     return text[:limit].rstrip() + "..."
+
+
+def make_snippet_around_query(text, query, limit=650):
+    text = " ".join(str(text or "").split())
+    if not text:
+        return ""
+
+    normalized_text = normalize_arabic(text)
+    normalized_query = normalize_arabic(query)
+
+    idx = normalized_text.find(normalized_query)
+
+    if idx == -1:
+        # Try the most important token
+        tokens = [t for t in normalized_query.split() if len(t) >= 2]
+        for token in tokens:
+            idx = normalized_text.find(token)
+            if idx != -1:
+                break
+
+    if idx == -1:
+        return clean_snippet(text, limit)
+
+    start = max(0, idx - 230)
+    end = min(len(text), idx + 420)
+
+    snippet = text[start:end].strip()
+
+    if start > 0:
+        snippet = "..." + snippet
+
+    if end < len(text):
+        snippet = snippet + "..."
+
+    return clean_snippet(snippet, limit)
 
 
 def resolve_library_db_path():
@@ -194,13 +251,168 @@ def resolve_library_db_path():
     return LIBRARY_DB
 
 
+def library_query_variants(query):
+    q = str(query or "").strip()
+    nq = normalize_arabic(q)
+
+    variants = [q]
+
+    # Smart expansion for common searches
+    if nq in ["بدر", "معركه بدر", "غزوه بدر"]:
+        variants = [
+            "غزوة بدر",
+            "بدر الكبرى",
+            "وقعة بدر",
+            "معركة بدر",
+            "بدر",
+        ]
+    elif nq in ["احد", "معركه احد", "غزوه احد"]:
+        variants = [
+            "غزوة أحد",
+            "أحد",
+            "وقعة أحد",
+            "معركة أحد",
+        ]
+    elif nq in ["الهجره", "هجره"]:
+        variants = [
+            "الهجرة النبوية",
+            "الهجرة",
+            "هاجر النبي",
+        ]
+
+    # Remove duplicates while preserving order
+    seen = set()
+    output = []
+
+    for item in variants:
+        key = normalize_arabic(item)
+        if key not in seen:
+            seen.add(key)
+            output.append(item)
+
+    return output
+
+
+def score_library_result(query, title, book, page, text):
+    nq = normalize_arabic(query)
+    ntitle = normalize_arabic(title)
+    nbook = normalize_arabic(book)
+    ntext = normalize_arabic(text)
+
+    score = 0
+
+    tokens = [t for t in nq.split() if len(t) >= 2]
+
+    if nq and nq in ntitle:
+        score += 120
+
+    if nq and nq in nbook:
+        score += 30
+
+    if nq and nq in ntext:
+        score += 80
+
+    for token in tokens:
+        if token in ntitle:
+            score += 50
+        if token in ntext:
+            score += 20
+
+    # Battle of Badr quality boost
+    if "بدر" in nq:
+        badr_phrases = [
+            "غزوه بدر",
+            "بدر الكبري",
+            "وقعه بدر",
+            "معركه بدر",
+            "يوم بدر",
+        ]
+        for phrase in badr_phrases:
+            if phrase in ntext or phrase in ntitle:
+                score += 250
+
+        battle_context = [
+            "غزوه",
+            "معركه",
+            "وقعه",
+            "المسلمون",
+            "قريش",
+            "رمضان",
+            "الهجره",
+            "ابو جهل",
+            "الانصار",
+            "المهاجرين",
+        ]
+
+        # Strong context near the word Badr
+        badr_index = ntext.find("بدر")
+        if badr_index != -1:
+            window = ntext[max(0, badr_index - 180):badr_index + 220]
+            if any(word in window for word in battle_context):
+                score += 180
+
+            # Penalize random historical mentions of "after Badr" without battle context
+            if not any(word in window for word in battle_context):
+                score -= 120
+
+    # Prefer chunks that are not just OCR garbage
+    alpha_chars = re.findall(r"[\u0600-\u06FFa-zA-Z]", str(text or ""))
+    if len(alpha_chars) < 80:
+        score -= 100
+
+    # Penalize obvious website/header noise
+    noisy_markers = [
+        "www.",
+        ".org",
+        ".com",
+        "islamicbulletin",
+    ]
+    lower_text = str(text or "").lower()
+    if any(marker in lower_text for marker in noisy_markers):
+        score -= 60
+
+    return score
+
+
+def get_library_table_columns(cursor, table):
+    cursor.execute(f"PRAGMA table_info({table})")
+    cols = [row["name"] for row in cursor.fetchall()]
+
+    text_col = None
+    for candidate in ["text", "content", "chunk", "text_chunk", "body"]:
+        if candidate in cols:
+            text_col = candidate
+            break
+
+    title_col = "title" if "title" in cols else ("book_title" if "book_title" in cols else None)
+    book_col = "book" if "book" in cols else ("source" if "source" in cols else ("book_title" if "book_title" in cols else None))
+    page_col = "page" if "page" in cols else ("page_number" if "page_number" in cols else None)
+
+    return cols, text_col, title_col, book_col, page_col
+
+
+def row_to_library_item(row, query):
+    title = row["title"] or row["book"] or "نتيجة من المكتبة"
+    book = row["book"] or row["title"] or "غير محدد"
+    page = row["page"] or "غير محددة"
+    raw_text = row["snippet"] or ""
+
+    return {
+        "title": title,
+        "book": book,
+        "page": page,
+        "snippet": make_snippet_around_query(raw_text, query),
+        "_score_text": raw_text,
+    }
+
+
 def search_islamic_library(query, limit=3):
     """
     Searches a local SQLite Islamic library database.
 
-    Supported schemas:
-    1) FTS table named: library_fts, chunks_fts, islamic_library_fts
-    2) Normal tables named: library_chunks, chunks, islamic_library, documents, pages
+    This version ranks results instead of returning the first random match.
+    It also expands common searches like "بدر" into "غزوة بدر / بدر الكبرى"
+    and returns snippets around the searched word.
     """
 
     query = str(query or "").strip()
@@ -219,7 +431,8 @@ def search_islamic_library(query, limit=3):
     c.execute("SELECT name FROM sqlite_master WHERE type='table'")
     tables = [row["name"] for row in c.fetchall()]
 
-    results = []
+    candidates = []
+    variants = library_query_variants(query)
 
     fts_candidates = [
         "library_fts",
@@ -233,18 +446,7 @@ def search_islamic_library(query, limit=3):
             continue
 
         try:
-            c.execute(f"PRAGMA table_info({table})")
-            cols = [row["name"] for row in c.fetchall()]
-
-            text_col = None
-            for candidate in ["text", "content", "chunk", "text_chunk", "body"]:
-                if candidate in cols:
-                    text_col = candidate
-                    break
-
-            title_col = "title" if "title" in cols else ("book_title" if "book_title" in cols else None)
-            book_col = "book" if "book" in cols else ("source" if "source" in cols else ("book_title" if "book_title" in cols else None))
-            page_col = "page" if "page" in cols else ("page_number" if "page_number" in cols else None)
+            cols, text_col, title_col, book_col, page_col = get_library_table_columns(c, table)
 
             if not text_col:
                 continue
@@ -260,20 +462,23 @@ def search_islamic_library(query, limit=3):
                 SELECT {", ".join(select_cols)}
                 FROM {table}
                 WHERE {table} MATCH ?
-                LIMIT ?
+                LIMIT 80
             """
 
-            for row in c.execute(sql, (query, limit)):
-                results.append({
-                    "title": row["title"] or row["book"] or "نتيجة من المكتبة",
-                    "book": row["book"] or row["title"] or "غير محدد",
-                    "page": row["page"] or "غير محددة",
-                    "snippet": clean_snippet(row["snippet"]),
-                })
-
-            if results:
-                conn.close()
-                return results[:limit]
+            for variant in variants:
+                try:
+                    for row in c.execute(sql, (variant,)):
+                        item = row_to_library_item(row, query)
+                        item["_score"] = score_library_result(
+                            query,
+                            item["title"],
+                            item["book"],
+                            item["page"],
+                            item["_score_text"],
+                        )
+                        candidates.append(item)
+                except Exception:
+                    continue
 
         except Exception:
             pass
@@ -291,18 +496,7 @@ def search_islamic_library(query, limit=3):
             continue
 
         try:
-            c.execute(f"PRAGMA table_info({table})")
-            cols = [row["name"] for row in c.fetchall()]
-
-            text_col = None
-            for candidate in ["text", "content", "chunk", "text_chunk", "body"]:
-                if candidate in cols:
-                    text_col = candidate
-                    break
-
-            title_col = "title" if "title" in cols else ("book_title" if "book_title" in cols else None)
-            book_col = "book" if "book" in cols else ("source" if "source" in cols else ("book_title" if "book_title" in cols else None))
-            page_col = "page" if "page" in cols else ("page_number" if "page_number" in cols else None)
+            cols, text_col, title_col, book_col, page_col = get_library_table_columns(c, table)
 
             if not text_col:
                 continue
@@ -314,32 +508,65 @@ def search_islamic_library(query, limit=3):
                 f"{text_col} AS snippet",
             ]
 
-            like_query = f"%{query}%"
-
             sql = f"""
                 SELECT {", ".join(select_cols)}
                 FROM {table}
                 WHERE {text_col} LIKE ?
-                LIMIT ?
+                LIMIT 80
             """
 
-            for row in c.execute(sql, (like_query, limit)):
-                results.append({
-                    "title": row["title"] or row["book"] or "نتيجة من المكتبة",
-                    "book": row["book"] or row["title"] or "غير محدد",
-                    "page": row["page"] or "غير محددة",
-                    "snippet": clean_snippet(row["snippet"]),
-                })
-
-            if results:
-                conn.close()
-                return results[:limit]
+            for variant in variants:
+                like_query = f"%{variant}%"
+                for row in c.execute(sql, (like_query,)):
+                    item = row_to_library_item(row, query)
+                    item["_score"] = score_library_result(
+                        query,
+                        item["title"],
+                        item["book"],
+                        item["page"],
+                        item["_score_text"],
+                    )
+                    candidates.append(item)
 
         except Exception:
             pass
 
     conn.close()
-    return results[:limit]
+
+    # Deduplicate by book/page/snippet prefix
+    deduped = []
+    seen = set()
+
+    for item in candidates:
+        key = (
+            normalize_arabic(item.get("book")),
+            str(item.get("page")),
+            normalize_arabic(item.get("snippet"))[:140],
+        )
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+        deduped.append(item)
+
+    # For "بدر", avoid weak random mentions when better battle-context results exist.
+    nq = normalize_arabic(query)
+    if "بدر" in nq:
+        strong = [item for item in deduped if item.get("_score", 0) >= 180]
+        if strong:
+            deduped = strong
+
+    deduped.sort(key=lambda x: x.get("_score", 0), reverse=True)
+
+    output = []
+
+    for item in deduped[:limit]:
+        item.pop("_score", None)
+        item.pop("_score_text", None)
+        output.append(item)
+
+    return output
 
 
 # =====================================================
