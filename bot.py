@@ -37,7 +37,6 @@ from adhkar_data import (
     EVENING_ADHKAR,
 )
 
-from learn_islam_data import LEARN_ISLAM_TOPICS
 
 
 # =====================================================
@@ -72,7 +71,6 @@ HADEETH_API = "https://hadeethenc.com/api/v1/hadeeths/one/"
 LIST_API = "https://hadeethenc.com/api/v1/hadeeths/list/"
 
 DB = "bot.db"
-LIBRARY_DB = os.environ.get("ISLAMIC_LIBRARY_DB", "islamic_library.db")
 
 
 # =====================================================
@@ -169,407 +167,6 @@ def parse_schedule_time(value, fallback="09:00"):
 
 
 # =====================================================
-# Islamic Library Search
-# =====================================================
-
-def normalize_arabic(text):
-    text = str(text or "")
-    replacements = {
-        "أ": "ا",
-        "إ": "ا",
-        "آ": "ا",
-        "ى": "ي",
-        "ة": "ه",
-        "ؤ": "و",
-        "ئ": "ي",
-        "ٱ": "ا",
-    }
-
-    for src_char, dst_char in replacements.items():
-        text = text.replace(src_char, dst_char)
-
-    # Remove Arabic diacritics and tatweel
-    text = re.sub(r"[\u064B-\u065F\u0670ـ]", "", text)
-    text = re.sub(r"\s+", " ", text)
-    return text.strip().lower()
-
-
-def clean_snippet(text, limit=650):
-    text = " ".join(str(text or "").split())
-    if len(text) <= limit:
-        return text
-    return text[:limit].rstrip() + "..."
-
-
-def make_snippet_around_query(text, query, limit=650):
-    text = " ".join(str(text or "").split())
-    if not text:
-        return ""
-
-    normalized_text = normalize_arabic(text)
-    normalized_query = normalize_arabic(query)
-
-    idx = normalized_text.find(normalized_query)
-
-    if idx == -1:
-        # Try the most important token
-        tokens = [t for t in normalized_query.split() if len(t) >= 2]
-        for token in tokens:
-            idx = normalized_text.find(token)
-            if idx != -1:
-                break
-
-    if idx == -1:
-        return clean_snippet(text, limit)
-
-    start = max(0, idx - 230)
-    end = min(len(text), idx + 420)
-
-    snippet = text[start:end].strip()
-
-    if start > 0:
-        snippet = "..." + snippet
-
-    if end < len(text):
-        snippet = snippet + "..."
-
-    return clean_snippet(snippet, limit)
-
-
-def resolve_library_db_path():
-    candidates = [
-        LIBRARY_DB,
-        os.path.join(os.getcwd(), LIBRARY_DB),
-        os.path.join(os.getcwd(), "islamic_library.db"),
-        os.path.join("/app", "islamic_library.db"),
-    ]
-
-    for candidate in candidates:
-        if candidate and os.path.exists(candidate):
-            return candidate
-
-    return LIBRARY_DB
-
-
-def library_query_variants(query):
-    q = str(query or "").strip()
-    nq = normalize_arabic(q)
-
-    variants = [q]
-
-    # Smart expansion for common searches
-    if nq in ["بدر", "معركه بدر", "غزوه بدر"]:
-        variants = [
-            "غزوة بدر",
-            "بدر الكبرى",
-            "وقعة بدر",
-            "معركة بدر",
-            "بدر",
-        ]
-    elif nq in ["احد", "معركه احد", "غزوه احد"]:
-        variants = [
-            "غزوة أحد",
-            "أحد",
-            "وقعة أحد",
-            "معركة أحد",
-        ]
-    elif nq in ["الهجره", "هجره"]:
-        variants = [
-            "الهجرة النبوية",
-            "الهجرة",
-            "هاجر النبي",
-        ]
-
-    # Remove duplicates while preserving order
-    seen = set()
-    output = []
-
-    for item in variants:
-        key = normalize_arabic(item)
-        if key not in seen:
-            seen.add(key)
-            output.append(item)
-
-    return output
-
-
-def score_library_result(query, title, book, page, text):
-    nq = normalize_arabic(query)
-    ntitle = normalize_arabic(title)
-    nbook = normalize_arabic(book)
-    ntext = normalize_arabic(text)
-
-    score = 0
-
-    tokens = [t for t in nq.split() if len(t) >= 2]
-
-    if nq and nq in ntitle:
-        score += 120
-
-    if nq and nq in nbook:
-        score += 30
-
-    if nq and nq in ntext:
-        score += 80
-
-    for token in tokens:
-        if token in ntitle:
-            score += 50
-        if token in ntext:
-            score += 20
-
-    # Battle of Badr quality boost
-    if "بدر" in nq:
-        badr_phrases = [
-            "غزوه بدر",
-            "بدر الكبري",
-            "وقعه بدر",
-            "معركه بدر",
-            "يوم بدر",
-        ]
-        for phrase in badr_phrases:
-            if phrase in ntext or phrase in ntitle:
-                score += 250
-
-        battle_context = [
-            "غزوه",
-            "معركه",
-            "وقعه",
-            "المسلمون",
-            "قريش",
-            "رمضان",
-            "الهجره",
-            "ابو جهل",
-            "الانصار",
-            "المهاجرين",
-        ]
-
-        # Strong context near the word Badr
-        badr_index = ntext.find("بدر")
-        if badr_index != -1:
-            window = ntext[max(0, badr_index - 180):badr_index + 220]
-            if any(word in window for word in battle_context):
-                score += 180
-
-            # Penalize random historical mentions of "after Badr" without battle context
-            if not any(word in window for word in battle_context):
-                score -= 120
-
-    # Prefer chunks that are not just OCR garbage
-    alpha_chars = re.findall(r"[\u0600-\u06FFa-zA-Z]", str(text or ""))
-    if len(alpha_chars) < 80:
-        score -= 100
-
-    # Penalize obvious website/header noise
-    noisy_markers = [
-        "www.",
-        ".org",
-        ".com",
-        "islamicbulletin",
-    ]
-    lower_text = str(text or "").lower()
-    if any(marker in lower_text for marker in noisy_markers):
-        score -= 60
-
-    return score
-
-
-def get_library_table_columns(cursor, table):
-    cursor.execute(f"PRAGMA table_info({table})")
-    cols = [row["name"] for row in cursor.fetchall()]
-
-    text_col = None
-    for candidate in ["text", "content", "chunk", "text_chunk", "body"]:
-        if candidate in cols:
-            text_col = candidate
-            break
-
-    title_col = "title" if "title" in cols else ("book_title" if "book_title" in cols else None)
-    book_col = "book" if "book" in cols else ("source" if "source" in cols else ("book_title" if "book_title" in cols else None))
-    page_col = "page" if "page" in cols else ("page_number" if "page_number" in cols else None)
-
-    return cols, text_col, title_col, book_col, page_col
-
-
-def row_to_library_item(row, query):
-    title = row["title"] or row["book"] or "نتيجة من المكتبة"
-    book = row["book"] or row["title"] or "غير محدد"
-    page = row["page"] or "غير محددة"
-    raw_text = row["snippet"] or ""
-
-    return {
-        "title": title,
-        "book": book,
-        "page": page,
-        "snippet": make_snippet_around_query(raw_text, query),
-        "_score_text": raw_text,
-    }
-
-
-def search_islamic_library(query, limit=3):
-    """
-    Searches a local SQLite Islamic library database.
-
-    This version ranks results instead of returning the first random match.
-    It also expands common searches like "بدر" into "غزوة بدر / بدر الكبرى"
-    and returns snippets around the searched word.
-    """
-
-    query = str(query or "").strip()
-    if not query:
-        return []
-
-    db_path = resolve_library_db_path()
-
-    if not os.path.exists(db_path):
-        return []
-
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    c = conn.cursor()
-
-    c.execute("SELECT name FROM sqlite_master WHERE type='table'")
-    tables = [row["name"] for row in c.fetchall()]
-
-    candidates = []
-    variants = library_query_variants(query)
-
-    fts_candidates = [
-        "library_fts",
-        "chunks_fts",
-        "islamic_library_fts",
-        "documents_fts",
-    ]
-
-    for table in fts_candidates:
-        if table not in tables:
-            continue
-
-        try:
-            cols, text_col, title_col, book_col, page_col = get_library_table_columns(c, table)
-
-            if not text_col:
-                continue
-
-            select_cols = [
-                f"{title_col} AS title" if title_col else "'' AS title",
-                f"{book_col} AS book" if book_col else "'' AS book",
-                f"{page_col} AS page" if page_col else "'' AS page",
-                f"{text_col} AS snippet",
-            ]
-
-            sql = f"""
-                SELECT {", ".join(select_cols)}
-                FROM {table}
-                WHERE {table} MATCH ?
-                LIMIT 80
-            """
-
-            for variant in variants:
-                try:
-                    for row in c.execute(sql, (variant,)):
-                        item = row_to_library_item(row, query)
-                        item["_score"] = score_library_result(
-                            query,
-                            item["title"],
-                            item["book"],
-                            item["page"],
-                            item["_score_text"],
-                        )
-                        candidates.append(item)
-                except Exception:
-                    continue
-
-        except Exception:
-            pass
-
-    normal_candidates = [
-        "library_chunks",
-        "chunks",
-        "islamic_library",
-        "documents",
-        "pages",
-    ]
-
-    for table in normal_candidates:
-        if table not in tables:
-            continue
-
-        try:
-            cols, text_col, title_col, book_col, page_col = get_library_table_columns(c, table)
-
-            if not text_col:
-                continue
-
-            select_cols = [
-                f"{title_col} AS title" if title_col else "'' AS title",
-                f"{book_col} AS book" if book_col else "'' AS book",
-                f"{page_col} AS page" if page_col else "'' AS page",
-                f"{text_col} AS snippet",
-            ]
-
-            sql = f"""
-                SELECT {", ".join(select_cols)}
-                FROM {table}
-                WHERE {text_col} LIKE ?
-                LIMIT 80
-            """
-
-            for variant in variants:
-                like_query = f"%{variant}%"
-                for row in c.execute(sql, (like_query,)):
-                    item = row_to_library_item(row, query)
-                    item["_score"] = score_library_result(
-                        query,
-                        item["title"],
-                        item["book"],
-                        item["page"],
-                        item["_score_text"],
-                    )
-                    candidates.append(item)
-
-        except Exception:
-            pass
-
-    conn.close()
-
-    # Deduplicate by book/page/snippet prefix
-    deduped = []
-    seen = set()
-
-    for item in candidates:
-        key = (
-            normalize_arabic(item.get("book")),
-            str(item.get("page")),
-            normalize_arabic(item.get("snippet"))[:140],
-        )
-
-        if key in seen:
-            continue
-
-        seen.add(key)
-        deduped.append(item)
-
-    # For "بدر", avoid weak random mentions when better battle-context results exist.
-    nq = normalize_arabic(query)
-    if "بدر" in nq:
-        strong = [item for item in deduped if item.get("_score", 0) >= 180]
-        if strong:
-            deduped = strong
-
-    deduped.sort(key=lambda x: x.get("_score", 0), reverse=True)
-
-    output = []
-
-    for item in deduped[:limit]:
-        item.pop("_score", None)
-        item.pop("_score_text", None)
-        output.append(item)
-
-    return output
-
-
-# =====================================================
 # Database
 # =====================================================
 
@@ -641,18 +238,6 @@ def init_db():
         text TEXT NOT NULL,
         source TEXT DEFAULT 'auto',
         created_at INTEGER NOT NULL
-    )
-    """)
-
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS quiz_answers(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        quiz_id TEXT NOT NULL,
-        selected INTEGER NOT NULL,
-        correct INTEGER NOT NULL,
-        answered_at INTEGER NOT NULL,
-        UNIQUE(user_id, quiz_id)
     )
     """)
 
@@ -1643,181 +1228,6 @@ def dua_channel_message():
 
 
 # =====================================================
-# Islamic Quiz
-# =====================================================
-
-DAILY_QUIZZES = [
-    {
-        "id": "q001",
-        "question": "ما أول سورة في القرآن الكريم؟",
-        "choices": ["البقرة", "الفاتحة", "الإخلاص", "الناس"],
-        "correct": 1,
-        "explanation": "أول سورة في ترتيب المصحف هي سورة الفاتحة.",
-    },
-    {
-        "id": "q002",
-        "question": "كم عدد أركان الإسلام؟",
-        "choices": ["ثلاثة", "أربعة", "خمسة", "ستة"],
-        "correct": 2,
-        "explanation": "أركان الإسلام خمسة: الشهادتان، الصلاة، الزكاة، الصوم، والحج.",
-    },
-    {
-        "id": "q003",
-        "question": "ما الشهر الذي يصومه المسلمون؟",
-        "choices": ["محرم", "رجب", "رمضان", "شوال"],
-        "correct": 2,
-        "explanation": "فرض الله صيام شهر رمضان على المسلمين.",
-    },
-    {
-        "id": "q004",
-        "question": "ما قبلة المسلمين في الصلاة؟",
-        "choices": ["المسجد النبوي", "المسجد الأقصى", "الكعبة", "غار حراء"],
-        "correct": 2,
-        "explanation": "قبلة المسلمين هي الكعبة المشرفة في مكة.",
-    },
-    {
-        "id": "q005",
-        "question": "من هو خاتم الأنبياء والمرسلين؟",
-        "choices": ["موسى عليه السلام", "عيسى عليه السلام", "إبراهيم عليه السلام", "محمد ﷺ"],
-        "correct": 3,
-        "explanation": "النبي محمد ﷺ هو خاتم الأنبياء والمرسلين.",
-    },
-    {
-        "id": "q006",
-        "question": "كم عدد الصلوات المفروضة في اليوم والليلة؟",
-        "choices": ["ثلاث", "أربع", "خمس", "ست"],
-        "correct": 2,
-        "explanation": "الصلوات المفروضة خمس صلوات في اليوم والليلة.",
-    },
-    {
-        "id": "q007",
-        "question": "ما أطول سورة في القرآن؟",
-        "choices": ["آل عمران", "البقرة", "النساء", "المائدة"],
-        "correct": 1,
-        "explanation": "أطول سورة في القرآن الكريم هي سورة البقرة.",
-    },
-    {
-        "id": "q008",
-        "question": "ما أول ركن من أركان الإسلام؟",
-        "choices": ["الصلاة", "الزكاة", "الشهادتان", "الحج"],
-        "correct": 2,
-        "explanation": "أول ركن من أركان الإسلام هو شهادة أن لا إله إلا الله وأن محمدًا رسول الله.",
-    },
-]
-
-
-def get_quiz_by_id(quiz_id):
-    for quiz in DAILY_QUIZZES:
-        if quiz["id"] == quiz_id:
-            return quiz
-    return None
-
-
-def random_quiz():
-    return random.choice(DAILY_QUIZZES)
-
-
-def quiz_start_url(quiz_id):
-    return f"https://t.me/{BOT_USERNAME}?start=quiz_{quiz_id}"
-
-
-def quiz_channel_message(quiz=None):
-    quiz = quiz or random_quiz()
-    letters = ["A", "B", "C", "D"]
-
-    choices_text = ""
-    for i, choice in enumerate(quiz["choices"]):
-        choices_text += f"{letters[i]}) {esc(choice)}\n"
-
-    text = f"""🧠 <b>سؤال إسلامي</b>
-
-{esc(quiz["question"])}
-
-{choices_text}
-━━━━━━━━━━━━━━
-
-اضغط الزر للإجابة داخل البوت ومعرفة النتيجة.
-🌍 {esc(CHANNEL_ID)}
-"""
-
-    return text, quiz["id"]
-
-
-def quiz_channel_keyboard(quiz_id):
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🧠 أجب في البوت", url=quiz_start_url(quiz_id))]
-    ])
-
-
-def render_quiz_question(quiz):
-    letters = ["A", "B", "C", "D"]
-    buttons = []
-
-    for i, choice in enumerate(quiz["choices"]):
-        buttons.append([
-            InlineKeyboardButton(
-                f"{letters[i]}) {choice}",
-                callback_data=f"quiz_answer_{quiz['id']}_{i}"
-            )
-        ])
-
-    buttons.append([InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")])
-
-    text = f"""🧠 <b>سؤال إسلامي</b>
-
-{esc(quiz["question"])}
-
-اختر الإجابة:
-"""
-
-    return text, InlineKeyboardMarkup(buttons)
-
-
-def record_quiz_answer(user_id, quiz_id, selected, correct):
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-
-    c.execute(
-        """
-        INSERT OR IGNORE INTO quiz_answers(
-            user_id,
-            quiz_id,
-            selected,
-            correct,
-            answered_at
-        )
-        VALUES (?, ?, ?, ?, ?)
-        """,
-        (user_id, quiz_id, selected, 1 if correct else 0, now_timestamp())
-    )
-
-    inserted = c.rowcount == 1
-
-    conn.commit()
-    conn.close()
-
-    return inserted
-
-
-def quiz_answers_count():
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("SELECT COUNT(*) FROM quiz_answers")
-    count = c.fetchone()[0]
-    conn.close()
-    return count
-
-
-def quiz_correct_answers_count():
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("SELECT COUNT(*) FROM quiz_answers WHERE correct=1")
-    count = c.fetchone()[0]
-    conn.close()
-    return count
-
-
-# =====================================================
 # UI Menus
 # =====================================================
 
@@ -1833,15 +1243,12 @@ BOT_TEXTS = {
         "quran": "📖 القرآن",
         "hadith": "🕊️ الأحاديث",
         "adhkar": "🤲 الأذكار",
-        "quiz": "🧠 سؤال إسلامي",
-        "learn": "🧭 تعلم الإسلام",
         "bot_language": "🌍 لغة البوت",
         "about": "ℹ️ عن المشروع",
         "telegram": "🌐 Telegram",
         "whatsapp": "🟢 WhatsApp",
         "home": "🏠 القائمة الرئيسية",
         "admin": "🛠️ لوحة الإدارة",
-        "learn_title": "🧭 <b>تعلم الإسلام</b>\n\nاختر درسًا:",
         "language_title": "🌍 <b>اختر لغة البوت:</b>",
         "language_saved": "✅ تم تغيير لغة البوت إلى:",
         "unknown": "استخدم القائمة أسفل الشاشة أو اضغط /start.",
@@ -1852,15 +1259,12 @@ BOT_TEXTS = {
         "quran": "📖 Quran",
         "hadith": "🕊️ Hadiths",
         "adhkar": "🤲 Adhkar",
-        "quiz": "🧠 Islamic Quiz",
-        "learn": "🧭 Learn Islam",
         "bot_language": "🌍 Bot Language",
         "about": "ℹ️ About",
         "telegram": "🌐 Telegram",
         "whatsapp": "🟢 WhatsApp",
         "home": "🏠 Main Menu",
         "admin": "🛠️ Admin Panel",
-        "learn_title": "🧭 <b>Learn Islam</b>\n\nChoose a lesson:",
         "language_title": "🌍 <b>Choose bot language:</b>",
         "language_saved": "✅ Bot language changed to:",
         "unknown": "Use the menu below or press /start.",
@@ -1871,15 +1275,12 @@ BOT_TEXTS = {
         "quran": "📖 Quran",
         "hadith": "🕊️ Hadithe",
         "adhkar": "🤲 Adhkar",
-        "quiz": "🧠 Islamisches Quiz",
-        "learn": "🧭 Islam lernen",
         "bot_language": "🌍 Bot-Sprache",
         "about": "ℹ️ Über das Projekt",
         "telegram": "🌐 Telegram",
         "whatsapp": "🟢 WhatsApp",
         "home": "🏠 Hauptmenü",
         "admin": "🛠️ Admin-Bereich",
-        "learn_title": "🧭 <b>Islam lernen</b>\n\nWähle eine Lektion:",
         "language_title": "🌍 <b>Bot-Sprache wählen:</b>",
         "language_saved": "✅ Bot-Sprache geändert zu:",
         "unknown": "Nutze das Menü unten oder drücke /start.",
@@ -1890,15 +1291,12 @@ BOT_TEXTS = {
         "quran": "📖 Coran",
         "hadith": "🕊️ Hadiths",
         "adhkar": "🤲 Adhkar",
-        "quiz": "🧠 Quiz islamique",
-        "learn": "🧭 Apprendre l’islam",
         "bot_language": "🌍 Langue du bot",
         "about": "ℹ️ À propos",
         "telegram": "🌐 Telegram",
         "whatsapp": "🟢 WhatsApp",
         "home": "🏠 Menu principal",
         "admin": "🛠️ Administration",
-        "learn_title": "🧭 <b>Apprendre l’islam</b>\n\nChoisissez une courte leçon:",
         "language_title": "🌍 <b>Choisissez la langue du bot:</b>",
         "language_saved": "✅ Langue du bot changée en:",
         "unknown": "Utilisez le menu ci-dessous ou appuyez sur /start.",
@@ -1909,15 +1307,12 @@ BOT_TEXTS = {
         "quran": "📖 Corán",
         "hadith": "🕊️ Hadices",
         "adhkar": "🤲 Adhkar",
-        "quiz": "🧠 Quiz islámico",
-        "learn": "🧭 Aprender Islam",
         "bot_language": "🌍 Idioma del bot",
         "about": "ℹ️ Acerca de",
         "telegram": "🌐 Telegram",
         "whatsapp": "🟢 WhatsApp",
         "home": "🏠 Menú principal",
         "admin": "🛠️ Administración",
-        "learn_title": "🧭 <b>Aprender Islam</b>\n\nElige una lección corta:",
         "language_title": "🌍 <b>Elige el idioma del bot:</b>",
         "language_saved": "✅ Idioma del bot cambiado a:",
         "unknown": "Usa el menú de abajo o pulsa /start.",
@@ -1928,15 +1323,12 @@ BOT_TEXTS = {
         "quran": "📖 Kur’an",
         "hadith": "🕊️ Hadisler",
         "adhkar": "🤲 Zikirler",
-        "quiz": "🧠 İslami soru",
-        "learn": "🧭 İslamı öğren",
         "bot_language": "🌍 Bot dili",
         "about": "ℹ️ Hakkında",
         "telegram": "🌐 Telegram",
         "whatsapp": "🟢 WhatsApp",
         "home": "🏠 Ana menü",
         "admin": "🛠️ Yönetim paneli",
-        "learn_title": "🧭 <b>İslamı öğren</b>\n\nKısa bir ders seçin:",
         "language_title": "🌍 <b>Bot dilini seçin:</b>",
         "language_saved": "✅ Bot dili değiştirildi:",
         "unknown": "Aşağıdaki menüyü kullanın veya /start yazın.",
@@ -1947,15 +1339,12 @@ BOT_TEXTS = {
         "quran": "📖 Quran",
         "hadith": "🕊️ Hadis",
         "adhkar": "🤲 Adhkar",
-        "quiz": "🧠 Kuis Islam",
-        "learn": "🧭 Belajar Islam",
         "bot_language": "🌍 Bahasa bot",
         "about": "ℹ️ Tentang",
         "telegram": "🌐 Telegram",
         "whatsapp": "🟢 WhatsApp",
         "home": "🏠 Menu utama",
         "admin": "🛠️ Panel admin",
-        "learn_title": "🧭 <b>Belajar Islam</b>\n\nPilih pelajaran singkat:",
         "language_title": "🌍 <b>Pilih bahasa bot:</b>",
         "language_saved": "✅ Bahasa bot diubah ke:",
         "unknown": "Gunakan menu di bawah atau tekan /start.",
@@ -1966,15 +1355,12 @@ BOT_TEXTS = {
         "quran": "📖 قرآن",
         "hadith": "🕊️ احادیث",
         "adhkar": "🤲 اذکار",
-        "quiz": "🧠 اسلامی سوال",
-        "learn": "🧭 اسلام سیکھیں",
         "bot_language": "🌍 بوٹ کی زبان",
         "about": "ℹ️ تعارف",
         "telegram": "🌐 Telegram",
         "whatsapp": "🟢 WhatsApp",
         "home": "🏠 مین مینو",
         "admin": "🛠️ ایڈمن پینل",
-        "learn_title": "🧭 <b>اسلام سیکھیں</b>\n\nایک مختصر سبق منتخب کریں:",
         "language_title": "🌍 <b>بوٹ کی زبان منتخب کریں:</b>",
         "language_saved": "✅ بوٹ کی زبان تبدیل ہو گئی:",
         "unknown": "نیچے مینو استعمال کریں یا /start دبائیں.",
@@ -1985,15 +1371,12 @@ BOT_TEXTS = {
         "quran": "📖 कुरआन",
         "hadith": "🕊️ हदीस",
         "adhkar": "🤲 अज़कार",
-        "quiz": "🧠 इस्लामी प्रश्न",
-        "learn": "🧭 इस्लाम सीखें",
         "bot_language": "🌍 बॉट भाषा",
         "about": "ℹ️ परिचय",
         "telegram": "🌐 Telegram",
         "whatsapp": "🟢 WhatsApp",
         "home": "🏠 मुख्य मेनू",
         "admin": "🛠️ एडमिन पैनल",
-        "learn_title": "🧭 <b>इस्लाम सीखें</b>\n\nएक छोटा पाठ चुनें:",
         "language_title": "🌍 <b>बॉट भाषा चुनें:</b>",
         "language_saved": "✅ बॉट भाषा बदल गई:",
         "unknown": "नीचे मेनू उपयोग करें या /start दबाएँ.",
@@ -2001,8 +1384,6 @@ BOT_TEXTS = {
 }
 
 
-# Learn Islam content is stored in learn_islam_data.py
-# It supports levels: summary, medium, detailed, sources.
 def t(user_id, key):
     lang = get_bot_lang(user_id)
     return BOT_TEXTS.get(lang, BOT_TEXTS["ar"]).get(key, BOT_TEXTS["ar"].get(key, key))
@@ -2026,10 +1407,8 @@ def bot_lang_name(lang):
 def reply_main_menu(user_id):
     rows = [
         [KeyboardButton(t(user_id, "quran")), KeyboardButton(t(user_id, "hadith"))],
-        [KeyboardButton(t(user_id, "adhkar")), KeyboardButton(t(user_id, "quiz"))],
-        [KeyboardButton("📚 المكتبة الإسلامية"), KeyboardButton(t(user_id, "learn"))],
-        [KeyboardButton(t(user_id, "bot_language")), KeyboardButton(t(user_id, "about"))],
-        [KeyboardButton(t(user_id, "telegram")), KeyboardButton(t(user_id, "whatsapp"))],
+        [KeyboardButton(t(user_id, "adhkar")), KeyboardButton(t(user_id, "bot_language"))],
+        [KeyboardButton(t(user_id, "about")), KeyboardButton(t(user_id, "whatsapp"))],
         [KeyboardButton(t(user_id, "home"))],
     ]
 
@@ -2053,8 +1432,6 @@ def is_menu_text(text, key):
         "quran": ["📖 القرآن"],
         "hadith": ["🕊️ الأحاديث"],
         "adhkar": ["🤲 الأذكار"],
-        "quiz": ["🧠 سؤال إسلامي"],
-        "learn": ["🧭 تعلم الإسلام"],
         "bot_language": ["🌍 تغيير اللغة", "🌍 لغة البوت"],
         "about": ["ℹ️ عن المشروع"],
         "telegram": ["🌐 Telegram"],
@@ -2070,11 +1447,8 @@ def main_menu(user_id):
         [InlineKeyboardButton(t(user_id, "quran"), callback_data="quran")],
         [InlineKeyboardButton(t(user_id, "hadith"), callback_data="hadith")],
         [InlineKeyboardButton(t(user_id, "adhkar"), callback_data="adhkar_menu")],
-        [InlineKeyboardButton("📚 المكتبة الإسلامية", callback_data="islamic_library")],
-        [InlineKeyboardButton(t(user_id, "learn"), callback_data="learn_islam")],
         [InlineKeyboardButton(t(user_id, "bot_language"), callback_data="bot_language_menu")],
         [InlineKeyboardButton(t(user_id, "about"), callback_data="about")],
-        [InlineKeyboardButton(t(user_id, "telegram"), url="https://t.me/UMMAHBRIDGE")]
     ]
 
     if WHATSAPP_CHANNEL_URL:
@@ -2084,18 +1458,6 @@ def main_menu(user_id):
         buttons.append([InlineKeyboardButton(t(user_id, "admin"), callback_data="admin")])
 
     return InlineKeyboardMarkup(buttons)
-
-
-def islamic_library_menu():
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🔎 بحث في المكتبة", callback_data="library_search")],
-        [InlineKeyboardButton("📘 السيرة النبوية", callback_data="library_category_seerah")],
-        [InlineKeyboardButton("⚔️ الغزوات", callback_data="library_category_battles")],
-        [InlineKeyboardButton("🕋 قصص الأنبياء", callback_data="library_category_prophets")],
-        [InlineKeyboardButton("🌟 الصحابة", callback_data="library_category_sahaba")],
-        [InlineKeyboardButton("🌿 التابعون", callback_data="library_category_tabiun")],
-        [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")]
-    ])
 
 
 def bot_language_menu(user_id):
@@ -2122,155 +1484,6 @@ def bot_language_menu(user_id):
         [InlineKeyboardButton(t(user_id, "home"), callback_data="home")]
     ]
     return InlineKeyboardMarkup(rows)
-
-
-def learn_topic_label(topic, lang):
-    topic_data = LEARN_ISLAM_TOPICS.get(topic, {})
-    labels = topic_data.get("title", {})
-    return labels.get(lang) or labels.get("en") or labels.get("ar") or topic
-
-
-def learn_islam_menu(user_id):
-    lang = get_bot_lang(user_id)
-    rows = []
-
-    for topic in LEARN_ISLAM_TOPICS.keys():
-        rows.append([
-            InlineKeyboardButton(
-                learn_topic_label(topic, lang),
-                callback_data=f"learn_topic_{topic}"
-            )
-        ])
-
-    rows.append([InlineKeyboardButton(t(user_id, "home"), callback_data="home")])
-    return InlineKeyboardMarkup(rows)
-
-
-def learn_level_label(level, lang):
-    labels = {
-        "summary": {
-            "ar": "⚡ ملخص سريع",
-            "en": "⚡ Quick summary",
-            "de": "⚡ Kurze Zusammenfassung",
-            "fr": "⚡ Résumé rapide",
-            "es": "⚡ Resumen rápido",
-            "tr": "⚡ Kısa özet",
-            "id": "⚡ Ringkasan singkat",
-            "ur": "⚡ مختصر خلاصہ",
-            "hi": "⚡ संक्षिप्त सार",
-        },
-        "medium": {
-            "ar": "📖 شرح متوسط",
-            "en": "📖 Medium explanation",
-            "de": "📖 Mittlere Erklärung",
-            "fr": "📖 Explication moyenne",
-            "es": "📖 Explicación media",
-            "tr": "📖 Orta açıklama",
-            "id": "📖 Penjelasan sedang",
-            "ur": "📖 درمیانی شرح",
-            "hi": "📖 मध्यम व्याख्या",
-        },
-        "detailed": {
-            "ar": "📚 شرح مفصل",
-            "en": "📚 Detailed explanation",
-            "de": "📚 Ausführliche Erklärung",
-            "fr": "📚 Explication détaillée",
-            "es": "📚 Explicación detallada",
-            "tr": "📚 Detaylı açıklama",
-            "id": "📚 Penjelasan rinci",
-            "ur": "📚 تفصیلی شرح",
-            "hi": "📚 विस्तृत व्याख्या",
-        },
-        "sources": {
-            "ar": "📚 المصادر",
-            "en": "📚 Sources",
-            "de": "📚 Quellen",
-            "fr": "📚 Sources",
-            "es": "📚 Fuentes",
-            "tr": "📚 Kaynaklar",
-            "id": "📚 Sumber",
-            "ur": "📚 مصادر",
-            "hi": "📚 स्रोत",
-        },
-    }
-
-    return labels.get(level, {}).get(lang) or labels.get(level, {}).get("en") or level
-
-
-def learn_level_menu(user_id, topic):
-    lang = get_bot_lang(user_id)
-    topic_title = learn_topic_label(topic, lang)
-
-    rows = [
-        [InlineKeyboardButton(learn_level_label("summary", lang), callback_data=f"learn_page_{topic}_summary_0")],
-        [InlineKeyboardButton(learn_level_label("medium", lang), callback_data=f"learn_page_{topic}_medium_0")],
-        [InlineKeyboardButton(learn_level_label("detailed", lang), callback_data=f"learn_page_{topic}_detailed_0")],
-        [InlineKeyboardButton(learn_level_label("sources", lang), callback_data=f"learn_page_{topic}_sources_0")],
-        [InlineKeyboardButton("⬅️ Back", callback_data="learn_islam")],
-        [InlineKeyboardButton(t(user_id, "home"), callback_data="home")],
-    ]
-
-    return InlineKeyboardMarkup(rows)
-
-
-def get_learn_pages(topic, level, lang):
-    topic_data = LEARN_ISLAM_TOPICS.get(topic, {})
-    levels = topic_data.get("levels", {})
-    level_data = levels.get(level, {})
-
-    pages = (
-        level_data.get(lang)
-        or level_data.get("en")
-        or level_data.get("ar")
-        or []
-    )
-
-    if isinstance(pages, str):
-        pages = [pages]
-
-    return pages
-
-
-def render_learn_page(user_id, topic, level, page):
-    lang = get_bot_lang(user_id)
-    pages = get_learn_pages(topic, level, lang)
-
-    if not pages:
-        return "❌ Lesson not found.", learn_islam_menu(user_id)
-
-    if page < 0:
-        page = 0
-
-    if page >= len(pages):
-        page = len(pages) - 1
-
-    text = pages[page]
-
-    if len(pages) > 1:
-        text += f"\n\n<b>{page + 1}/{len(pages)}</b>"
-
-    buttons = []
-    nav = []
-
-    if page > 0:
-        nav.append(InlineKeyboardButton("⬅️", callback_data=f"learn_page_{topic}_{level}_{page - 1}"))
-
-    if page < len(pages) - 1:
-        nav.append(InlineKeyboardButton("➡️", callback_data=f"learn_page_{topic}_{level}_{page + 1}"))
-
-    if nav:
-        buttons.append(nav)
-
-    if level != "summary":
-        buttons.append([InlineKeyboardButton(learn_level_label("summary", lang), callback_data=f"learn_page_{topic}_summary_0")])
-
-    if level != "sources":
-        buttons.append([InlineKeyboardButton(learn_level_label("sources", lang), callback_data=f"learn_page_{topic}_sources_0")])
-
-    buttons.append([InlineKeyboardButton("⬅️ Back", callback_data=f"learn_topic_{topic}")])
-    buttons.append([InlineKeyboardButton(t(user_id, "home"), callback_data="home")])
-
-    return text, InlineKeyboardMarkup(buttons)
 
 
 def hadith_menu():
@@ -2404,7 +1617,6 @@ def admin_menu():
         [InlineKeyboardButton("🕊️ نشر حديث الآن", callback_data="admin_post_hadith")],
         [InlineKeyboardButton("📖 نشر آية الآن", callback_data="admin_post_quran")],
         [InlineKeyboardButton("🤲 نشر دعاء الآن", callback_data="admin_post_dua")],
-        [InlineKeyboardButton("🧠 نشر سؤال إسلامي", callback_data="admin_post_quiz")],
         [InlineKeyboardButton("📊 الإحصائيات", callback_data="admin_stats")],
         [InlineKeyboardButton("✍️ إرسال رسالة مخصصة للقناة", callback_data="admin_custom_post")],
         [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")]
@@ -2740,33 +1952,6 @@ async def send_channel_message(context, text, post_type, item_id, source, reply_
 # Commands
 # =====================================================
 
-async def show_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE, quiz_id: str):
-    user_id = update.effective_user.id
-    chat_id = update.effective_chat.id
-
-    add_user(user_id)
-    ensure_adhkar_reminder_row(user_id, chat_id)
-
-    quiz = get_quiz_by_id(quiz_id)
-
-    if not quiz:
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text="❌ لم يتم العثور على السؤال.",
-            reply_markup=reply_main_menu(user_id),
-            parse_mode="HTML"
-        )
-        return
-
-    text, markup = render_quiz_question(quiz)
-
-    await context.bot.send_message(
-        chat_id=chat_id,
-        text=text,
-        reply_markup=markup,
-        parse_mode="HTML"
-    )
-
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -2774,13 +1959,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     add_user(user_id)
     ensure_adhkar_reminder_row(user_id, chat_id)
-
-    if context.args:
-        payload = context.args[0]
-        if payload.startswith("quiz_"):
-            quiz_id = payload.replace("quiz_", "", 1)
-            await show_quiz(update, context, quiz_id)
-            return
 
     await update.message.reply_text(
         t(user_id, "welcome"),
@@ -2959,61 +2137,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     data = q.data
 
-    if data.startswith("quiz_answer_"):
-        parts = data.split("_")
-        quiz_id = parts[2]
-        selected = int(parts[3])
-
-        quiz = get_quiz_by_id(quiz_id)
-
-        if not quiz:
-            await safe_edit(q, "❌ لم يتم العثور على السؤال.", main_menu(user_id))
-            return
-
-        correct_index = quiz["correct"]
-        is_correct = selected == correct_index
-        inserted = record_quiz_answer(user_id, quiz_id, selected, is_correct)
-
-        letters = ["A", "B", "C", "D"]
-        selected_text = quiz["choices"][selected]
-        correct_text = quiz["choices"][correct_index]
-
-        if is_correct:
-            result = "✅ <b>إجابة صحيحة</b>"
-        else:
-            result = "❌ <b>إجابة غير صحيحة</b>"
-
-        already = ""
-        if not inserted:
-            already = "\n\nℹ️ <i>لقد أجبت على هذا السؤال من قبل. لم يتم احتساب الإجابة مرة ثانية.</i>"
-
-        text = f"""🧠 <b>نتيجة السؤال</b>
-
-{result}
-
-<b>السؤال:</b>
-{esc(quiz["question"])}
-
-<b>إجابتك:</b>
-{letters[selected]}) {esc(selected_text)}
-
-<b>الإجابة الصحيحة:</b>
-{letters[correct_index]}) {esc(correct_text)}
-
-💡 <b>الشرح:</b>
-{esc(quiz["explanation"])}
-{already}
-"""
-
-        await safe_edit(
-            q,
-            text,
-            InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")]
-            ])
-        )
-
-    elif data.startswith("pending_publish_"):
+    if data.startswith("pending_publish_"):
         if not is_admin(user_id):
             await q.answer("غير مسموح", show_alert=True)
             return
@@ -3122,76 +2246,6 @@ Pending ID: <code>{new_pending_id}</code>
             parse_mode="HTML"
         )
 
-    elif data == "learn_islam":
-        await safe_edit(q, t(user_id, "learn_title"), learn_islam_menu(user_id))
-
-    elif data.startswith("learn_topic_"):
-        topic = data.replace("learn_topic_", "", 1)
-        topic_title = learn_topic_label(topic, get_bot_lang(user_id))
-
-        await safe_edit(
-            q,
-            f"{esc(topic_title)}\n\nاختر مستوى القراءة:",
-            learn_level_menu(user_id, topic)
-        )
-
-    elif data.startswith("learn_page_"):
-        parts = data.replace("learn_page_", "", 1).rsplit("_", 2)
-        if len(parts) != 3:
-            await safe_edit(q, "❌ Lesson not found.", learn_islam_menu(user_id))
-            return
-
-        topic, level, page_text = parts
-
-        try:
-            page = int(page_text)
-        except Exception:
-            page = 0
-
-        text, markup = render_learn_page(user_id, topic, level, page)
-        await safe_edit(q, text, markup)
-
-    elif data == "islamic_library":
-        await safe_edit(
-            q,
-            """📚 <b>المكتبة الإسلامية</b>
-
-ابحث في مصادر مختارة مثل السيرة، الغزوات، قصص الأنبياء، الصحابة والتابعين.
-
-⚠️ هذه أداة تعليمية وليست للإفتاء.""",
-            islamic_library_menu()
-        )
-
-    elif data == "library_search":
-        context.user_data["waiting_library_search"] = True
-
-        await safe_edit(
-            q,
-            """🔎 <b>اكتب الآن ما تريد البحث عنه في المكتبة الإسلامية.</b>
-
-مثال:
-<code>بدر</code>
-<code>معركة بدر</code>
-<code>مكة</code>
-<code>قريش</code>
-""",
-            InlineKeyboardMarkup([
-                [InlineKeyboardButton("⬅️ رجوع للمكتبة", callback_data="islamic_library")],
-                [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="home")]
-            ])
-        )
-
-    elif data.startswith("library_category_"):
-        await safe_edit(
-            q,
-            """📚 <b>هذا القسم سيعرض موضوعات جاهزة قريبًا.</b>
-
-حاليًا استخدم زر:
-🔎 بحث في المكتبة
-
-مثال: بدر، مكة، قريش، الهجرة.""",
-            islamic_library_menu()
-        )
 
     elif data == "quran":
         try:
@@ -3505,8 +2559,6 @@ Pending ID: <code>{new_pending_id}</code>
 🕊️ حديث اليوم.
 📖 آية اليوم.
 🤲 دعاء اليوم.
-🧠 سؤال إسلامي تفاعلي.
-
 🤲 يحتوي البوت على أذكار الصباح والمساء بلغات متعددة مع عداد تكرار.
 🔥 ويحتوي على إنجاز يومي وسلسلة أيام للأذكار.
 ⏰ ويمكن لكل مستخدم اختيار وقت التذكير والمنطقة الزمنية الخاصة به.
@@ -3583,28 +2635,6 @@ Pending ID: <code>{new_pending_id}</code>
 
         await safe_edit(q, "✅ <b>تم نشر دعاء في القناة.</b>", admin_menu())
 
-    elif data == "admin_post_quiz":
-        if not is_admin(user_id):
-            await q.answer("غير مسموح", show_alert=True)
-            return
-
-        quiz = random_quiz()
-        text, quiz_id = quiz_channel_message(quiz)
-
-        await send_channel_message(
-            context=context,
-            text=text,
-            post_type="quiz",
-            item_id=quiz_id,
-            source="admin_manual_quiz",
-            reply_markup=quiz_channel_keyboard(quiz_id)
-        )
-
-        await safe_edit(
-            q,
-            f"✅ <b>تم نشر السؤال الإسلامي في القناة.</b>\n\nQuiz ID: <code>{esc(quiz_id)}</code>",
-            admin_menu()
-        )
 
     elif data == "admin_stats":
         if not is_admin(user_id):
@@ -3613,9 +2643,6 @@ Pending ID: <code>{new_pending_id}</code>
 
         morning_count = len(get_adhkar_subscribers("morning"))
         evening_count = len(get_adhkar_subscribers("evening"))
-
-        total_quiz_answers = quiz_answers_count()
-        correct_quiz_answers = quiz_correct_answers_count()
 
         await safe_edit(
             q,
@@ -3629,11 +2656,6 @@ Pending ID: <code>{new_pending_id}</code>
 🕊️ <b>منشورات الحديث:</b> {channel_posts_count_by_type("hadith")}
 📖 <b>منشورات القرآن:</b> {channel_posts_count_by_type("quran")}
 🤲 <b>منشورات الدعاء:</b> {channel_posts_count_by_type("dua")}
-🧠 <b>منشورات الأسئلة:</b> {channel_posts_count_by_type("quiz")}
-
-🧠 <b>إجابات الأسئلة:</b> {total_quiz_answers}
-✅ <b>الإجابات الصحيحة:</b> {correct_quiz_answers}
-
 📋 <b>منشورات بانتظار الموافقة:</b> {pending_channel_posts_count()}
 
 🤲 <b>مشتركو تذكير الصباح:</b> {morning_count}
@@ -3644,7 +2666,6 @@ Pending ID: <code>{new_pending_id}</code>
 ⏰ <b>التذكير الشخصي:</b> مفعّل
 🌍 <b>المنطقة الزمنية لكل مستخدم:</b> مفعّلة
 ✅ <b>مراجعة قبل النشر التلقائي:</b> مفعّلة
-🧠 <b>سؤال إسلامي تفاعلي:</b> مفعّل
 🟢 <b>زر WhatsApp:</b> {"مفعّل" if WHATSAPP_CHANNEL_URL else "غير مفعّل"}
 
 ⏰ <b>أوقات النشر التلقائي:</b>
@@ -3726,9 +2747,6 @@ async def send_about_from_menu(update: Update):
 🕊️ حديث اليوم.
 📖 آية اليوم.
 🤲 دعاء اليوم.
-🧠 سؤال إسلامي تفاعلي.
-🧭 تعلم الإسلام بلغات متعددة.
-
 🤲 يحتوي البوت على أذكار الصباح والمساء بلغات متعددة مع عداد تكرار.
 🔥 ويحتوي على إنجاز يومي وسلسلة أيام للأذكار.
 ⏰ ويمكن لكل مستخدم اختيار وقت التذكير والمنطقة الزمنية الخاصة به.
@@ -3781,23 +2799,6 @@ async def handle_reply_keyboard_menu(update: Update, context: ContextTypes.DEFAU
         )
         return True
 
-    if is_menu_text(text, "quiz"):
-        quiz = random_quiz()
-        quiz_text, quiz_markup = render_quiz_question(quiz)
-        await update.message.reply_text(
-            quiz_text,
-            reply_markup=quiz_markup,
-            parse_mode="HTML"
-        )
-        return True
-
-    if is_menu_text(text, "learn"):
-        await update.message.reply_text(
-            t(user_id, "learn_title"),
-            reply_markup=learn_islam_menu(user_id),
-            parse_mode="HTML"
-        )
-        return True
 
     if is_menu_text(text, "bot_language"):
         await update.message.reply_text(
@@ -3835,18 +2836,6 @@ async def handle_reply_keyboard_menu(update: Update, context: ContextTypes.DEFAU
             await update.message.reply_text("❌ رابط قناة WhatsApp غير مضاف بعد.")
         return True
 
-    if text == "📚 المكتبة الإسلامية":
-        await update.message.reply_text(
-            """📚 <b>المكتبة الإسلامية</b>
-
-ابحث في مصادر مختارة مثل السيرة، الغزوات، قصص الأنبياء، الصحابة والتابعين.
-
-⚠️ هذه أداة تعليمية وليست للإفتاء.""",
-            reply_markup=islamic_library_menu(),
-            parse_mode="HTML"
-        )
-        return True
-
     if is_menu_text(text, "admin"):
         if not is_admin(user_id):
             await update.message.reply_text("❌ هذا القسم خاص بالمشرف فقط.")
@@ -3873,96 +2862,6 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     add_user(user_id)
     ensure_adhkar_reminder_row(user_id, chat_id)
-
-    if context.user_data.get("waiting_library_search"):
-        query = update.message.text.strip()
-
-        if len(query) < 2:
-            await update.message.reply_text(
-                """❌ اكتب كلمة بحث أو عبارة واضحة.
-
-مثال:
-<code>بدر</code>
-<code>معركة بدر</code>
-<code>مكة</code>
-<code>قريش</code>
-""",
-                parse_mode="HTML"
-            )
-            return
-
-        context.user_data["waiting_library_search"] = False
-
-        try:
-            results = search_islamic_library(query, limit=3)
-        except Exception as e:
-            await update.message.reply_text(
-                f"""❌ حدث خطأ أثناء البحث في المكتبة.
-
-<code>{esc(e)}</code>
-""",
-                reply_markup=islamic_library_menu(),
-                parse_mode="HTML"
-            )
-            return
-
-        if not results:
-            await update.message.reply_text(
-                f"""🔎 <b>نتيجة البحث</b>
-
-لم أجد نتائج واضحة عن:
-<code>{esc(query)}</code>
-
-تأكد أن ملف قاعدة البيانات موجود باسم:
-<code>{esc(LIBRARY_DB)}</code>
-
-وجرّب كلمة أخرى مثل:
-<code>بدر</code>
-<code>أحد</code>
-<code>الهجرة</code>
-<code>مكة</code>
-<code>قريش</code>
-
-⚠️ هذه الأداة تعليمية وليست للإفتاء.
-""",
-                reply_markup=islamic_library_menu(),
-                parse_mode="HTML"
-            )
-            return
-
-        text = f"""🔎 <b>نتائج البحث في المكتبة الإسلامية</b>
-
-بحثت عن:
-<code>{esc(query)}</code>
-
-"""
-
-        for i, item in enumerate(results, 1):
-            title = item.get("title", "بدون عنوان")
-            snippet = item.get("snippet", "")
-            book = item.get("book", "غير محدد")
-            page = item.get("page", "غير محددة")
-
-            text += f"""<b>{i}. {esc(title)}</b>
-
-{esc(snippet)}
-
-📚 <b>المصدر:</b> {esc(book)}
-📄 <b>الصفحة:</b> {esc(page)}
-
-━━━━━━━━━━━━━━
-
-"""
-
-        text += "⚠️ هذه نتائج تعليمية من مصادر مختارة وليست فتوى."
-
-        await update.message.reply_text(
-            text,
-            reply_markup=islamic_library_menu(),
-            parse_mode="HTML",
-            disable_web_page_preview=True
-        )
-        return
 
     if context.user_data.get("waiting_adhkar_custom_time"):
         kind = context.user_data.get("waiting_adhkar_custom_time")
@@ -4112,8 +3011,6 @@ def main():
     print("Personal reminders checker: every 60 seconds")
     print("Adhkar completion + streak system: enabled")
     print("Auto channel publishing approval: enabled")
-    print("Manual Islamic quiz: enabled")
-    print(f"Islamic library DB: {LIBRARY_DB}")
 
     app.run_polling()
 
